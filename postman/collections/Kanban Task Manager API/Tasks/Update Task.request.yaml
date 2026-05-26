@@ -1,0 +1,25 @@
+$kind: http-request
+name: Update Task
+method: PUT
+url: '{{baseUrl}}/api/tasks/{{taskId}}'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Updated Task",
+      "status": "in-progress"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when task routes are active

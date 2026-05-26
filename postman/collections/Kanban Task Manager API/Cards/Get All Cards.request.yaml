@@ -1,0 +1,30 @@
+$kind: http-request
+method: GET
+url: '{{baseUrl}}/api/cards'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response is an array", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.be.an("array");
+      });
+
+      pm.test("First item has _id, title, column fields (if array is non-empty)", function () {
+          const json = pm.response.json();
+          if (json.length > 0) {
+              pm.expect(json[0]).to.have.property("_id");
+              pm.expect(json[0]).to.have.property("title");
+              pm.expect(json[0]).to.have.property("column");
+          }
+      });

@@ -1,0 +1,33 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/cards'
+order: 6000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "description": "No title here",
+      "column": "todo"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response has message field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("message");
+      });
+
+      pm.test("Response message includes 'title is required'", function () {
+          const json = pm.response.json();
+          pm.expect(json.message.toLowerCase()).to.include("title is required");
+      });

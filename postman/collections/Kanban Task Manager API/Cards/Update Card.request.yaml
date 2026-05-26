@@ -1,0 +1,38 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/cards/{{cardId}}'
+order: 3000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "column": "inprogress",
+      "priority": "medium"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 200", function () {
+          pm.response.to.have.status(200);
+      });
+
+      pm.test("Response column equals 'inprogress'", function () {
+          const json = pm.response.json();
+          pm.expect(json.column).to.eql("inprogress");
+      });
+
+      pm.test("Response priority equals 'medium'", function () {
+          const json = pm.response.json();
+          pm.expect(json.priority).to.eql("medium");
+      });
+
+      pm.test("Response _id is present", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("_id");
+      });

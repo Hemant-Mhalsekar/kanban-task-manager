@@ -1,0 +1,33 @@
+$kind: http-request
+name: Register - Missing Fields
+method: POST
+url: '{{baseUrl}}/api/auth/register'
+order: 2000
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "testuser@example.com"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response has message field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("message");
+      });
+
+      pm.test("message mentions name, email, and password", function () {
+          const json = pm.response.json();
+          pm.expect(json.message.toLowerCase()).to.satisfy(function (msg) {
+              return msg.includes("name") || msg.includes("email") || msg.includes("password") || msg.includes("required") || msg.includes("fields");
+          });
+      });

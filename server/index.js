@@ -15,12 +15,14 @@ app.use(express.json());
 // ─── Routes ──────────────────────────────────────────────────
 // Health check
 app.get('/', (req, res) => {
-  res.json({ message: 'Server is running 🚀' });
+  res.json({ message: 'Server is running' });
 });
 
-// Future feature routes will be mounted here
-// app.use('/api/boards',  require('./routes/boardRoutes'));
-// app.use('/api/tasks',   require('./routes/taskRoutes'));
+// Auth
+app.use('/api/auth', require('./routes/auth'));
+
+// Cards
+app.use('/api/cards', require('./routes/cards'));
 
 // ─── 404 Handler ─────────────────────────────────────────────
 app.use((req, res) => {
@@ -38,5 +40,5 @@ app.use((err, req, res, next) => {
 // ─── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server listening on http://localhost:${PORT}`);
+  console.log(`Server listening on http://localhost:${PORT}`);
 });

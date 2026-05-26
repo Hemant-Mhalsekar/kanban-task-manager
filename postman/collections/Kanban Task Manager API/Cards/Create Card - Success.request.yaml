@@ -1,0 +1,55 @@
+$kind: http-request
+method: POST
+url: '{{baseUrl}}/api/cards'
+order: 1000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Design login screen",
+      "description": "Figma mockup first",
+      "column": "todo",
+      "priority": "high"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 201", function () {
+          pm.response.to.have.status(201);
+      });
+
+      pm.test("Response has _id field", function () {
+          const json = pm.response.json();
+          pm.expect(json._id).to.be.a("string");
+      });
+
+      pm.test("Response title equals 'Design login screen'", function () {
+          const json = pm.response.json();
+          pm.expect(json.title).to.eql("Design login screen");
+      });
+
+      pm.test("Response column equals 'todo'", function () {
+          const json = pm.response.json();
+          pm.expect(json.column).to.eql("todo");
+      });
+
+      pm.test("Response priority equals 'high'", function () {
+          const json = pm.response.json();
+          pm.expect(json.priority).to.eql("high");
+      });
+
+      pm.test("Response has user field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("user");
+      });
+
+      const json = pm.response.json();
+      if (json && json._id) {
+          pm.environment.set("cardId", json._id);
+      }

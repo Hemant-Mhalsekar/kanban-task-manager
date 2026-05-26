@@ -1,0 +1,27 @@
+$kind: http-request
+name: Create Board
+method: POST
+url: '{{baseUrl}}/api/boards'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "My First Board"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when board routes are active
+      pm.test("Status code is 201 or 404", function () {
+          pm.expect(pm.response.code).to.be.oneOf([201, 404]);
+      });

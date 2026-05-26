@@ -1,0 +1,15 @@
+$kind: http-request
+name: Delete Board
+method: DELETE
+url: '{{baseUrl}}/api/boards/{{boardId}}'
+order: 5000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when board routes are active

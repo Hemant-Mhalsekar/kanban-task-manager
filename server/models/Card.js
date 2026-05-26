@@ -1,0 +1,47 @@
+const mongoose = require('mongoose');
+
+const cardSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Title is required'],
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    column: {
+      type: String,
+      enum: {
+        values: ['todo', 'inprogress', 'done'],
+        message: 'Column must be todo, inprogress, or done',
+      },
+      default: 'todo',
+    },
+    order: {
+      type: Number,
+      default: 0,
+    },
+    priority: {
+      type: String,
+      enum: {
+        values: ['low', 'medium', 'high'],
+        message: 'Priority must be low, medium, or high',
+      },
+      default: 'medium',
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Card must belong to a user'],
+    },
+  },
+  { timestamps: true }
+);
+
+// Index for efficient per-user queries sorted by column + order
+cardSchema.index({ user: 1, column: 1, order: 1 });
+
+module.exports = mongoose.model('Card', cardSchema);

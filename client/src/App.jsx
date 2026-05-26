@@ -1,16 +1,41 @@
-import './index.css';
-import Navbar from './components/Navbar';
-import BoardPage from './pages/BoardPage';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
 import { BoardProvider } from './context/BoardContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import './index.css';
 
 function App() {
   return (
-    <BoardProvider>
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        <BoardPage />
-      </div>
-    </BoardProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <BoardProvider>
+          <Routes>
+            {/* Root → redirect to login */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+
+            {/* Protected routes */}
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Catch-all */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </BoardProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,15 @@
+$kind: http-request
+name: Get Single Task
+method: GET
+url: '{{baseUrl}}/api/tasks/{{taskId}}'
+order: 3000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when task routes are active

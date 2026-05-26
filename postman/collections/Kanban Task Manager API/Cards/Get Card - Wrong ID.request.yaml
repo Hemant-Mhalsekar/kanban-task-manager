@@ -1,0 +1,27 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/cards/000000000000000000000000'
+order: 8000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "title": "Ghost card"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 404", function () {
+          pm.response.to.have.status(404);
+      });
+
+      pm.test("Response message equals 'Card not found or not authorized'", function () {
+          const json = pm.response.json();
+          pm.expect(json.message).to.eql("Card not found or not authorized");
+      });

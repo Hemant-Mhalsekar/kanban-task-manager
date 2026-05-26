@@ -1,0 +1,27 @@
+$kind: http-request
+name: Create Task
+method: POST
+url: '{{baseUrl}}/api/tasks'
+order: 2000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "My First Task",
+      "description": "Task description",
+      "status": "todo",
+      "board": "{{boardId}}"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when task routes are active

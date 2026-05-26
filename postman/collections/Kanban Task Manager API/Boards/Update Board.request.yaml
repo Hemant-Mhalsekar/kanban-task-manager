@@ -1,0 +1,24 @@
+$kind: http-request
+name: Update Board
+method: PUT
+url: '{{baseUrl}}/api/boards/{{boardId}}'
+order: 4000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Updated Board Title"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      // Implement when board routes are active

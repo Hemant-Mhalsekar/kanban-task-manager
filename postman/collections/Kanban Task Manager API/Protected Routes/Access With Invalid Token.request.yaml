@@ -1,0 +1,25 @@
+$kind: http-request
+name: Access With Invalid Token
+method: GET
+url: '{{baseUrl}}/api/boards'
+order: 2000
+headers:
+  - key: Authorization
+    value: Bearer invalidtoken123
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status code is 401 or 404", function () {
+          pm.expect(pm.response.code).to.be.oneOf([401, 404]);
+      });
+
+      pm.test("If 401: message mentions invalid or expired", function () {
+          if (pm.response.code === 401) {
+              const json = pm.response.json();
+              pm.expect(json).to.have.property("message");
+              pm.expect(json.message.toLowerCase()).to.satisfy(function (msg) {
+                  return msg.includes("invalid") || msg.includes("expired") || msg.includes("not authorized") || msg.includes("token");
+              });
+          }
+      });

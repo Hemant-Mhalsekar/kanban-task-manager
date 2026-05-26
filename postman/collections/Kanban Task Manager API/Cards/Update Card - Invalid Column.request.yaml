@@ -1,0 +1,33 @@
+$kind: http-request
+method: PUT
+url: '{{baseUrl}}/api/cards/{{cardId}}'
+order: 7000
+auth:
+  type: bearer
+  credentials:
+    - key: token
+      value: '{{authToken}}'
+body:
+  type: json
+  content: |-
+    {
+      "column": "backlog"
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      pm.test("Status is 400", function () {
+          pm.response.to.have.status(400);
+      });
+
+      pm.test("Response has message field", function () {
+          const json = pm.response.json();
+          pm.expect(json).to.have.property("message");
+      });
+
+      pm.test("Response message includes column validation error", function () {
+          const json = pm.response.json();
+          const msg = json.message.toLowerCase();
+          pm.expect(msg.includes("todo, inprogress, or done") || msg.includes("column must be")).to.be.true;
+      });
