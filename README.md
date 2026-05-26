@@ -165,11 +165,6 @@ kanban-task-manager/
 
 ---
 
-## Screenshots
-
-> _Add screenshots here after deploying._
-
----
 
 ## License
 
