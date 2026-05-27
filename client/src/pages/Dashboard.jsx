@@ -64,75 +64,53 @@ export default function Dashboard() {
     navigate('/login');
   };
 
-  // ── Drag end handler ────────────────────────────────────────
   const handleDragEnd = useCallback(async (result) => {
     const { draggableId, source, destination } = result;
 
-    // Dropped outside any droppable, or same spot → do nothing
     if (!destination) return;
     if (
       source.droppableId === destination.droppableId &&
       source.index === destination.index
     ) return;
 
-    // ── Optimistic update ──────────────────────────────────────
-    // Snapshot current state so we can roll back on failure
-    setCards((prev) => {
-      const updated = prev.map((c) =>
-        c._id === draggableId
-          ? { ...c, column: destination.droppableId, order: destination.index }
-          : c
-      );
+    const snapshot = [...cards];
+    const srcCol = source.droppableId;
+    const dstCol = destination.droppableId;
 
-      // Re-index `order` for all cards in the affected columns
-      const srcCol = source.droppableId;
-      const dstCol = destination.droppableId;
-
-      // Build column arrays post-move
-      const columnMap = {};
-      COLUMNS.forEach((col) => {
-        columnMap[col] = updated
-          .filter((c) => c.column === col)
-          .sort((a, b) => a.order - b.order);
-      });
-
-      // Remove card from source column list and insert into dest
-      const movedCard = prev.find((c) => c._id === draggableId);
-      const srcCards = columnMap[srcCol].filter((c) => c._id !== draggableId);
-      const dstCards =
-        srcCol === dstCol
-          ? srcCards
-          : columnMap[dstCol].filter((c) => c._id !== draggableId);
-
-      dstCards.splice(destination.index, 0, {
-        ...movedCard,
-        column: dstCol,
-      });
-
-      // Flatten back with correct order values
-      const reindexed = [
-        ...srcCards.map((c, i) => ({ ...c, order: i })),
-        ...(srcCol === dstCol
-          ? dstCards.map((c, i) => ({ ...c, order: i }))
-          : dstCards.map((c, i) => ({ ...c, order: i }))),
-        ...COLUMNS.filter((col) => col !== srcCol && col !== dstCol).flatMap(
-          (col) => columnMap[col]
-        ),
-      ];
-
-      return reindexed;
+    // Build clean column arrays from current state
+    const columnMap = {};
+    COLUMNS.forEach((col) => {
+      columnMap[col] = cards
+        .filter((c) => c.column === col)
+        .sort((a, b) => a.order - b.order);
     });
 
-    // ── Persist to backend ─────────────────────────────────────
-    // Snapshot before optimistic update for rollback
-    const snapshot = cards;
+    const movedCard = { ...cards.find((c) => c._id === draggableId), column: dstCol };
+
+    // Remove from source
+    columnMap[srcCol] = columnMap[srcCol].filter((c) => c._id !== draggableId);
+
+    // Insert into destination
+    if (srcCol === dstCol) {
+      columnMap[dstCol].splice(destination.index, 0, movedCard);
+    } else {
+      columnMap[dstCol] = columnMap[dstCol].filter((c) => c._id !== draggableId);
+      columnMap[dstCol].splice(destination.index, 0, movedCard);
+    }
+
+    // Reindex order for affected columns
+    const reindexed = COLUMNS.flatMap((col) =>
+      columnMap[col].map((c, i) => ({ ...c, order: i }))
+    );
+
+    setCards(reindexed);
+
     try {
       await updateCard(draggableId, {
-        column: destination.droppableId,
+        column: dstCol,
         order: destination.index,
       });
     } catch {
-      // Revert on failure
       setCards(snapshot);
       setError('Failed to save card position. Please try again.');
     }
