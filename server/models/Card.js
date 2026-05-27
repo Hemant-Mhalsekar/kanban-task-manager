@@ -36,6 +36,10 @@ const cardSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
     labels: {
       type: [String],
       enum: {

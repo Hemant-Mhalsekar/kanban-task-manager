@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Zap, Sun, Moon, Search, Tag, X, ChevronDown } from 'lucide-react';
+import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCards, createCard, deleteCard, updateCard } from '../api/cards';
 import Column from '../components/Column';
@@ -187,13 +187,33 @@ export default function Dashboard() {
       {/* ── Header ── */}
       <header className="bg-white dark:bg-[#13151F] border-b border-gray-200/80 dark:border-white/5 px-6 h-14 flex items-center justify-between flex-shrink-0 transition-colors duration-200">
         {/* Logo */}
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
-            <Zap className="w-4 h-4 text-white fill-white" />
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
+              <Zap className="w-4 h-4 text-white fill-white" />
+            </div>
+            <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight">
+              TaskPilot
+            </span>
           </div>
-          <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight">
-            TaskPilot
-          </span>
+
+          {/* Nav links */}
+          <nav className="hidden sm:flex items-center gap-1">
+            <Link
+              to="/dashboard"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-900 dark:text-white bg-gray-100 dark:bg-white/8 font-medium transition-colors"
+            >
+              <LayoutDashboard className="w-3.5 h-3.5" />
+              Board
+            </Link>
+            <Link
+              to="/analytics"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/8 transition-colors"
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              Analytics
+            </Link>
+          </nav>
         </div>
 
         {/* Right side controls */}
