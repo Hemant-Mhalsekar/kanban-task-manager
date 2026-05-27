@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
+import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 
 const PRIORITY_STYLES = {
   low:    'bg-green-100 text-green-700',
@@ -44,6 +45,7 @@ export default function Card({ card, index, onDelete, onUpdate }) {
   const [dueDateVal, setDueDateVal] = useState(
     card.dueDate ? card.dueDate.split('T')[0] : ''
   );
+  const [labelsVal, setLabelsVal]   = useState(card.labels ?? []);
   const [saving, setSaving]         = useState(false);
   const inputRef                    = useRef(null);
 
@@ -59,27 +61,40 @@ export default function Card({ card, index, onDelete, onUpdate }) {
   const startEdit = (e) => {
     e.stopPropagation();          // don't trigger drag
     setTitleVal(card.title);
+    setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
+    setLabelsVal(card.labels ?? []);
     setEditing(true);
-    // autofocus happens via ref below after render
     setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const toggleEditLabel = (e, label) => {
+    e.preventDefault();           // don't submit or blur
+    e.stopPropagation();
+    setLabelsVal((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    );
   };
 
   const commitEdit = async () => {
     const trimmed = titleVal.trim();
-    // Only save if something actually changed
-    const titleChanged   = trimmed && trimmed !== card.title;
-    const rawCardDue     = card.dueDate ? card.dueDate.split('T')[0] : '';
-    const dueDateChanged = dueDateVal !== rawCardDue;
-
     if (!trimmed) {
-      // Revert if title was cleared
+      // Revert if title cleared
       setEditing(false);
       setTitleVal(card.title);
-      setDueDateVal(rawCardDue);
+      setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
+      setLabelsVal(card.labels ?? []);
       return;
     }
 
-    if (!titleChanged && !dueDateChanged) {
+    const rawCardDue    = card.dueDate ? card.dueDate.split('T')[0] : '';
+    const titleChanged  = trimmed !== card.title;
+    const dueChanged    = dueDateVal !== rawCardDue;
+    // Compare sorted arrays to detect label changes
+    const sortedOld     = [...(card.labels ?? [])].sort().join(',');
+    const sortedNew     = [...labelsVal].sort().join(',');
+    const labelsChanged = sortedOld !== sortedNew;
+
+    if (!titleChanged && !dueChanged && !labelsChanged) {
       setEditing(false);
       return;
     }
@@ -87,8 +102,9 @@ export default function Card({ card, index, onDelete, onUpdate }) {
     setSaving(true);
     try {
       const payload = {};
-      if (titleChanged)   payload.title   = trimmed;
-      if (dueDateChanged) payload.dueDate = dueDateVal || null;
+      if (titleChanged)  payload.title   = trimmed;
+      if (dueChanged)    payload.dueDate = dueDateVal || null;
+      if (labelsChanged) payload.labels  = labelsVal;
       await onUpdate(card._id, payload);
     } finally {
       setSaving(false);
@@ -98,7 +114,12 @@ export default function Card({ card, index, onDelete, onUpdate }) {
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter')  { e.preventDefault(); commitEdit(); }
-    if (e.key === 'Escape') { setEditing(false); setTitleVal(card.title); }
+    if (e.key === 'Escape') {
+      setEditing(false);
+      setTitleVal(card.title);
+      setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
+      setLabelsVal(card.labels ?? []);
+    }
   };
 
   // ── Computed due date info ───────────────────────────────────
@@ -173,6 +194,47 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             </p>
           )}
 
+          {/* Labels — display (when not editing) */}
+          {!editing && card.labels && card.labels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {card.labels.map((label) => (
+                <span
+                  key={label}
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${LABEL_STYLES[label]?.chip ?? ''}`}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Labels — inline chip toggler (when editing) */}
+          {editing && (
+            <div className="mt-2 space-y-1">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Labels</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_LABELS.map((label) => {
+                  const isSelected = labelsVal.includes(label);
+                  const styles = LABEL_STYLES[label];
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onMouseDown={(e) => toggleEditLabel(e, label)}
+                      className={`text-xs font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+                        isSelected
+                          ? styles.chip + ' border-transparent'
+                          : styles.outline + ' bg-transparent'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Due date — display (when not editing) */}
           {dueDateLabel && !editing && (
             <p className={`mt-2 flex items-center gap-1 text-xs font-medium ${DUE_TEXT_STYLES[dueDateStatus]}`}>
@@ -193,7 +255,12 @@ export default function Card({ card, index, onDelete, onUpdate }) {
                 onChange={(e) => setDueDateVal(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter')  { e.preventDefault(); commitEdit(); }
-                  if (e.key === 'Escape') { setEditing(false); setTitleVal(card.title); setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : ''); }
+                  if (e.key === 'Escape') {
+                    setEditing(false);
+                    setTitleVal(card.title);
+                    setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
+                    setLabelsVal(card.labels ?? []);
+                  }
                 }}
                 className="w-full text-xs text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
