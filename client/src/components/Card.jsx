@@ -2,20 +2,27 @@ import { useState, useRef } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 
-const PRIORITY_STYLES = {
-  low:    'bg-green-100 text-green-700',
-  medium: 'bg-yellow-100 text-yellow-700',
-  high:   'bg-red-100 text-red-700',
+// 3px left border color by priority
+const PRIORITY_BORDER = {
+  high:   '#EF4444',
+  medium: '#F59E0B',
+  low:    '#22C55E',
+};
+
+// Small dot color next to title
+const PRIORITY_DOT = {
+  high:   'bg-red-500',
+  medium: 'bg-amber-400',
+  low:    'bg-green-500',
 };
 
 // ── Due date helpers ─────────────────────────────────────────────
 function formatDueDate(isoString) {
   if (!isoString) return null;
-  // Parse as local date using the date portion only to avoid TZ shifts
   const [year, month, day] = isoString.split('T')[0].split('-').map(Number);
   return new Date(year, month - 1, day).toLocaleDateString('en-US', {
     month: 'short',
-    day: 'numeric',
+    day:   'numeric',
   });
 }
 
@@ -25,15 +32,15 @@ function getDueDateStatus(isoString) {
   const due   = new Date(year, month - 1, day);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  if (due < today)  return 'overdue';
+  if (due < today)                      return 'overdue';
   if (due.getTime() === today.getTime()) return 'today';
   return 'future';
 }
 
 const DUE_TEXT_STYLES = {
   overdue: 'text-red-500 dark:text-red-400',
-  today:   'text-orange-500 dark:text-orange-400',
-  future:  'text-gray-400 dark:text-gray-500',
+  today:   'text-amber-500 dark:text-amber-400',
+  future:  'text-gray-400 dark:text-gray-600',
 };
 
 export default function Card({ card, index, onDelete, onUpdate }) {
@@ -41,13 +48,16 @@ export default function Card({ card, index, onDelete, onUpdate }) {
   const [deleting, setDeleting]     = useState(false);
   const [editing, setEditing]       = useState(false);
   const [titleVal, setTitleVal]     = useState(card.title);
-  // Store dueDate as YYYY-MM-DD string (what <input type="date"> uses)
   const [dueDateVal, setDueDateVal] = useState(
     card.dueDate ? card.dueDate.split('T')[0] : ''
   );
   const [labelsVal, setLabelsVal]   = useState(card.labels ?? []);
   const [saving, setSaving]         = useState(false);
   const inputRef                    = useRef(null);
+
+  const priorityBorder = PRIORITY_BORDER[card.priority] ?? PRIORITY_BORDER.medium;
+  const dueDateStatus  = getDueDateStatus(card.dueDate);
+  const dueDateLabel   = formatDueDate(card.dueDate);
 
   // ── Delete ──────────────────────────────────────────────────
   const handleDelete = async (e) => {
@@ -59,7 +69,7 @@ export default function Card({ card, index, onDelete, onUpdate }) {
 
   // ── Inline edit ─────────────────────────────────────────────
   const startEdit = (e) => {
-    e.stopPropagation();          // don't trigger drag
+    e.stopPropagation();
     setTitleVal(card.title);
     setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
     setLabelsVal(card.labels ?? []);
@@ -68,7 +78,7 @@ export default function Card({ card, index, onDelete, onUpdate }) {
   };
 
   const toggleEditLabel = (e, label) => {
-    e.preventDefault();           // don't submit or blur
+    e.preventDefault();
     e.stopPropagation();
     setLabelsVal((prev) =>
       prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
@@ -78,7 +88,6 @@ export default function Card({ card, index, onDelete, onUpdate }) {
   const commitEdit = async () => {
     const trimmed = titleVal.trim();
     if (!trimmed) {
-      // Revert if title cleared
       setEditing(false);
       setTitleVal(card.title);
       setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : '');
@@ -89,7 +98,6 @@ export default function Card({ card, index, onDelete, onUpdate }) {
     const rawCardDue    = card.dueDate ? card.dueDate.split('T')[0] : '';
     const titleChanged  = trimmed !== card.title;
     const dueChanged    = dueDateVal !== rawCardDue;
-    // Compare sorted arrays to detect label changes
     const sortedOld     = [...(card.labels ?? [])].sort().join(',');
     const sortedNew     = [...labelsVal].sort().join(',');
     const labelsChanged = sortedOld !== sortedNew;
@@ -122,10 +130,6 @@ export default function Card({ card, index, onDelete, onUpdate }) {
     }
   };
 
-  // ── Computed due date info ───────────────────────────────────
-  const dueDateStatus = getDueDateStatus(card.dueDate);
-  const dueDateLabel  = formatDueDate(card.dueDate);
-
   return (
     <Draggable draggableId={card._id} index={index}>
       {(provided, snapshot) => (
@@ -135,21 +139,25 @@ export default function Card({ card, index, onDelete, onUpdate }) {
           {...provided.dragHandleProps}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          className={`relative bg-white dark:bg-gray-700 rounded-xl border px-4 py-3 transition-all select-none ${
-            snapshot.isDragging
-              ? 'border-indigo-400 shadow-lg rotate-1 scale-105'
-              : dueDateStatus === 'overdue'
-                ? 'border-red-300 dark:border-red-600 shadow-sm hover:shadow-md'
-                : 'border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'
-          }`}
+          style={{
+            ...provided.draggableProps.style,
+            borderLeft: `3px solid ${priorityBorder}`,
+          }}
+          className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-150
+            bg-white dark:bg-[#1E2130]
+            border border-gray-200/70 dark:border-white/5
+            ${snapshot.isDragging
+              ? 'shadow-xl rotate-1 scale-[1.03] border-indigo-300 dark:border-indigo-500/50'
+              : 'shadow-sm hover:shadow-md'
+            }`}
         >
-          {/* Delete button — hover only, hidden while dragging or editing */}
+          {/* Delete button — appears on hover */}
           {hovered && !snapshot.isDragging && !editing && (
             <button
               onClick={handleDelete}
               disabled={deleting}
               aria-label="Delete card"
-              className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
+              className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded-md text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
             >
               {deleting ? (
                 <span className="text-xs">…</span>
@@ -161,42 +169,42 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             </button>
           )}
 
-          {/* Priority badge */}
-          <span className={`inline-block text-xs font-semibold rounded-full px-2 py-0.5 mb-2 ${PRIORITY_STYLES[card.priority] || PRIORITY_STYLES.medium}`}>
-            {card.priority}
-          </span>
-
-          {/* Title — click to edit inline */}
-          {editing ? (
-            <input
-              ref={inputRef}
-              value={titleVal}
-              onChange={(e) => setTitleVal(e.target.value)}
-              onBlur={commitEdit}
-              onKeyDown={handleKeyDown}
-              disabled={saving}
-              className="w-full text-sm font-semibold text-gray-800 dark:text-gray-100 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-600 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-6 disabled:opacity-60"
+          {/* Title row — priority dot + title */}
+          <div className="flex items-start gap-2 pr-5">
+            <span
+              className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[card.priority] ?? PRIORITY_DOT.medium}`}
             />
-          ) : (
-            <p
-              onClick={startEdit}
-              title="Click to edit"
-              className="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug pr-6 cursor-text hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-            >
-              {card.title}
-            </p>
-          )}
+            {editing ? (
+              <input
+                ref={inputRef}
+                value={titleVal}
+                onChange={(e) => setTitleVal(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
+                disabled={saving}
+                className="flex-1 text-sm font-semibold text-gray-900 dark:text-gray-100 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-300 dark:border-indigo-500/50 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 disabled:opacity-60"
+              />
+            ) : (
+              <p
+                onClick={startEdit}
+                title="Click to edit"
+                className="flex-1 text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug cursor-text hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
+                {card.title}
+              </p>
+            )}
+          </div>
 
           {/* Description */}
           {card.description && !editing && (
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
+            <p className="mt-1.5 ml-4 text-xs text-gray-500 dark:text-gray-500 leading-relaxed line-clamp-3">
               {card.description}
             </p>
           )}
 
-          {/* Labels — display (when not editing) */}
+          {/* Labels — display */}
           {!editing && card.labels && card.labels.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1">
+            <div className="mt-2.5 ml-4 flex flex-wrap gap-1">
               {card.labels.map((label) => (
                 <span
                   key={label}
@@ -208,14 +216,14 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             </div>
           )}
 
-          {/* Labels — inline chip toggler (when editing) */}
+          {/* Labels — edit mode chip toggler */}
           {editing && (
-            <div className="mt-2 space-y-1">
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Labels</p>
+            <div className="mt-2.5 ml-4 space-y-1">
+              <p className="text-xs font-medium text-gray-400 dark:text-gray-500">Labels</p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_LABELS.map((label) => {
                   const isSelected = labelsVal.includes(label);
-                  const styles = LABEL_STYLES[label];
+                  const styles     = LABEL_STYLES[label];
                   return (
                     <button
                       key={label}
@@ -235,9 +243,9 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             </div>
           )}
 
-          {/* Due date — display (when not editing) */}
+          {/* Due date — display */}
           {dueDateLabel && !editing && (
-            <p className={`mt-2 flex items-center gap-1 text-xs font-medium ${DUE_TEXT_STYLES[dueDateStatus]}`}>
+            <p className={`mt-2.5 ml-4 flex items-center gap-1 text-xs font-medium ${DUE_TEXT_STYLES[dueDateStatus]}`}>
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
               </svg>
@@ -245,10 +253,10 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             </p>
           )}
 
-          {/* Due date — inline editor (shown while editing) */}
+          {/* Due date — edit mode */}
           {editing && (
-            <div className="mt-2 space-y-1">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Due date</label>
+            <div className="mt-2 ml-4 space-y-1">
+              <label className="block text-xs font-medium text-gray-400 dark:text-gray-500">Due date</label>
               <input
                 type="date"
                 value={dueDateVal}
@@ -262,14 +270,14 @@ export default function Card({ card, index, onDelete, onUpdate }) {
                     setLabelsVal(card.labels ?? []);
                   }
                 }}
-                className="w-full text-xs text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full text-xs text-gray-800 dark:text-gray-100 bg-white dark:bg-[#13151F] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
             </div>
           )}
 
           {/* Saving indicator */}
           {saving && (
-            <p className="mt-1 text-xs text-indigo-400 animate-pulse">Saving…</p>
+            <p className="mt-1.5 ml-4 text-xs text-indigo-400 dark:text-indigo-500 animate-pulse">Saving…</p>
           )}
         </div>
       )}
