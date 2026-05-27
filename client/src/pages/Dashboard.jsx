@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { getCards, createCard, deleteCard, updateCard } from '../api/cards';
 import Column from '../components/Column';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
+import socket from '../socket';
 
 const COLUMNS = ['todo', 'inprogress', 'done'];
 
@@ -53,6 +54,41 @@ export default function Dashboard() {
       .then(setCards)
       .catch(() => setError('Failed to load cards. Please refresh.'))
       .finally(() => setLoading(false));
+  }, []);
+
+  // ── Real-time sync via Socket.io ─────────────────────────────
+  useEffect(() => {
+    socket.connect();
+
+    // A card was created in another session — add it if not already present
+    const onCardCreated = (card) => {
+      setCards((prev) =>
+        prev.some((c) => c._id === card._id) ? prev : [...prev, card]
+      );
+    };
+
+    // A card was updated in another session — merge into state
+    const onCardUpdated = (card) => {
+      setCards((prev) =>
+        prev.map((c) => (c._id === card._id ? { ...c, ...card } : c))
+      );
+    };
+
+    // A card was deleted in another session — remove from state
+    const onCardDeleted = ({ id }) => {
+      setCards((prev) => prev.filter((c) => String(c._id) !== String(id)));
+    };
+
+    socket.on('card:created', onCardCreated);
+    socket.on('card:updated', onCardUpdated);
+    socket.on('card:deleted', onCardDeleted);
+
+    return () => {
+      socket.off('card:created', onCardCreated);
+      socket.off('card:updated', onCardUpdated);
+      socket.off('card:deleted', onCardDeleted);
+      socket.disconnect();
+    };
   }, []);
 
   // ── Add card ────────────────────────────────────────────────
