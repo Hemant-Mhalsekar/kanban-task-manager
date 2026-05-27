@@ -3,15 +3,34 @@ import { Droppable } from '@hello-pangea/dnd';
 import Card from './Card';
 import AddCardForm from './AddCardForm';
 
-const COLUMN_STYLES = {
-  todo:       { header: 'bg-slate-100 dark:bg-slate-700',  dot: 'bg-slate-400',   label: 'To Do'       },
-  inprogress: { header: 'bg-blue-50 dark:bg-blue-900/40',  dot: 'bg-blue-500',    label: 'In Progress'  },
-  done:       { header: 'bg-green-50 dark:bg-green-900/40', dot: 'bg-green-500',   label: 'Done'         },
+// Per-column accent colors and metadata
+const COLUMN_CONFIG = {
+  todo: {
+    label:      'To Do',
+    accent:     '#6366F1',            // indigo
+    hoverBg:    'hover:bg-indigo-50 dark:hover:bg-indigo-500/10',
+    hoverText:  'hover:text-indigo-600 dark:hover:text-indigo-400',
+    dragOverBg: 'bg-indigo-50/60 dark:bg-indigo-500/10',
+  },
+  inprogress: {
+    label:      'In Progress',
+    accent:     '#F59E0B',            // amber
+    hoverBg:    'hover:bg-amber-50 dark:hover:bg-amber-500/10',
+    hoverText:  'hover:text-amber-600 dark:hover:text-amber-400',
+    dragOverBg: 'bg-amber-50/60 dark:bg-amber-500/10',
+  },
+  done: {
+    label:      'Done',
+    accent:     '#10B981',            // emerald
+    hoverBg:    'hover:bg-emerald-50 dark:hover:bg-emerald-500/10',
+    hoverText:  'hover:text-emerald-600 dark:hover:text-emerald-400',
+    dragOverBg: 'bg-emerald-50/60 dark:bg-emerald-500/10',
+  },
 };
 
 export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpdateCard, isFiltering }) {
   const [showForm, setShowForm] = useState(false);
-  const style = COLUMN_STYLES[columnId] || COLUMN_STYLES.todo;
+  const config = COLUMN_CONFIG[columnId] || COLUMN_CONFIG.todo;
 
   const handleSubmit = async (formData) => {
     await onAddCard({ ...formData, column: columnId });
@@ -19,14 +38,22 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
   };
 
   return (
-    <div className="flex flex-col w-full min-w-0 rounded-2xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-200">
+    <div
+      className="flex flex-col w-full min-w-0 rounded-xl bg-white dark:bg-[#13151F] border border-gray-200/70 dark:border-white/5 shadow-sm overflow-hidden transition-colors duration-200"
+      style={{ borderTop: `3px solid ${config.accent}` }}
+    >
       {/* Column header */}
-      <div className={`flex items-center gap-2 px-4 py-3 ${style.header}`}>
-        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${style.dot}`} />
-        <h2 className="text-sm font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex-1">
-          {style.label}
+      <div className="flex items-center gap-2 px-4 pt-3.5 pb-2.5">
+        <h2 className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest flex-1">
+          {config.label}
         </h2>
-        <span className="text-xs font-semibold text-gray-400 dark:text-gray-400 bg-white dark:bg-gray-700 rounded-full px-2 py-0.5 border border-gray-200 dark:border-gray-600">
+        <span
+          className="text-xs font-semibold rounded-full px-2 py-0.5 tabular-nums"
+          style={{
+            backgroundColor: `${config.accent}18`,
+            color: config.accent,
+          }}
+        >
           {cards.length}
         </span>
       </div>
@@ -37,12 +64,12 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
           <div
             ref={provided.innerRef}
             {...provided.droppableProps}
-            className={`flex flex-col gap-2 px-3 py-3 flex-1 overflow-y-auto max-h-[calc(100vh-220px)] transition-colors ${
-              snapshot.isDraggingOver ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+            className={`flex flex-col gap-3 px-3 pb-1 flex-1 overflow-y-auto max-h-[calc(100vh-220px)] transition-colors column-scroll ${
+              snapshot.isDraggingOver ? config.dragOverBg : ''
             }`}
           >
             {cards.length === 0 && !showForm && !snapshot.isDraggingOver && (
-              <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4">
+              <p className="text-xs text-center text-gray-400 dark:text-gray-600 mt-6 mb-2">
                 {isFiltering ? 'No cards match your search' : 'No cards yet'}
               </p>
             )}
@@ -51,7 +78,6 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
               <Card key={card._id} card={card} index={index} onDelete={onDeleteCard} onUpdate={onUpdateCard} />
             ))}
 
-            {/* Required placeholder — keeps column height stable while dragging */}
             {provided.placeholder}
 
             {showForm && (
@@ -61,19 +87,17 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
         )}
       </Droppable>
 
-      {/* Add card button */}
+      {/* Add card button — full width, flat, muted */}
       {!showForm && (
-        <div className="px-3 pb-3">
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full flex items-center gap-1.5 justify-center text-sm text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 rounded-xl py-2 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Add card
-          </button>
-        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className={`w-full flex items-center gap-1.5 px-4 py-3 text-sm text-gray-400 dark:text-gray-600 transition-colors ${config.hoverBg} ${config.hoverText} border-t border-gray-100 dark:border-white/5`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+          </svg>
+          Add card
+        </button>
       )}
     </div>
   );

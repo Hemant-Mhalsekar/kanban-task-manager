@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Zap } from 'lucide-react';
 
 export default function Login() {
   const { login } = useAuth();
@@ -28,8 +29,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F4F5F7' }}>
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border border-gray-200/80 p-8">
+
+        {/* TaskPilot brand */}
+        <div className="flex items-center gap-2 mb-7">
+          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
+            <Zap className="w-4 h-4 text-white fill-white" />
+          </div>
+          <span className="font-bold text-gray-900 text-[17px] tracking-tight">TaskPilot</span>
+        </div>
+
         <h1 className="text-2xl font-bold text-gray-800 mb-1">Welcome back</h1>
         <p className="text-sm text-gray-500 mb-6">
           Don&apos;t have an account?{' '}

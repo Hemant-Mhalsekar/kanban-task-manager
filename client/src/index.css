@@ -1,3 +1,25 @@
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
+
+/* ── Custom thin scrollbar for columns ───────────────────────── */
+.column-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.column-scroll:hover {
+  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+}
+.column-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.column-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.column-scroll::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+.column-scroll:hover::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.4);
+}
