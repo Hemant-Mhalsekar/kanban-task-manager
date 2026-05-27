@@ -3,7 +3,7 @@ import { useState } from 'react';
 const PRIORITY_OPTIONS = ['low', 'medium', 'high'];
 
 export default function AddCardForm({ onSubmit, onCancel }) {
-  const [form, setForm] = useState({ title: '', description: '', priority: 'medium' });
+  const [form, setForm] = useState({ title: '', description: '', priority: 'medium', dueDate: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,7 +20,7 @@ export default function AddCardForm({ onSubmit, onCancel }) {
     setError('');
     try {
       await onSubmit(form);
-      setForm({ title: '', description: '', priority: 'medium' });
+      setForm({ title: '', description: '', priority: 'medium', dueDate: '' });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add card');
     } finally {
@@ -68,6 +68,20 @@ export default function AddCardForm({ onSubmit, onCancel }) {
           </option>
         ))}
       </select>
+
+      {/* Due date picker */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+          Due Date <span className="font-normal opacity-70">(optional)</span>
+        </label>
+        <input
+          name="dueDate"
+          type="date"
+          value={form.dueDate}
+          onChange={handleChange}
+          className="w-full text-sm text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+        />
+      </div>
 
       <div className="flex gap-2 pt-1">
         <button

@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 // ─── POST /api/cards ───────────────────────────────────────────
 // Creates a new card for the logged-in user.
 router.post('/', async (req, res) => {
-  const { title, description, column, order, priority } = req.body;
+  const { title, description, column, order, priority, dueDate } = req.body;
 
   if (!title || !title.trim()) {
     return res.status(400).json({ message: 'Title is required' });
@@ -34,6 +34,7 @@ router.post('/', async (req, res) => {
       column: column || 'todo',
       order: order ?? 0,
       priority: priority || 'medium',
+      dueDate: dueDate || null,
       user: req.user.id,
     });
 
@@ -57,13 +58,14 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Card not found or not authorized' });
     }
 
-    const { title, description, column, order, priority } = req.body;
+    const { title, description, column, order, priority, dueDate } = req.body;
 
     if (title !== undefined) card.title = title.trim();
     if (description !== undefined) card.description = description;
     if (column !== undefined) card.column = column;
     if (order !== undefined) card.order = order;
     if (priority !== undefined) card.priority = priority;
+    if (dueDate !== undefined) card.dueDate = dueDate || null;
 
     const updated = await card.save();
     res.json(updated);

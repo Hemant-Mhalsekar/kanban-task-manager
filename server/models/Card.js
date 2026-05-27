@@ -32,6 +32,10 @@ const cardSchema = new mongoose.Schema(
       },
       default: 'medium',
     },
+    dueDate: {
+      type: Date,
+      default: null,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

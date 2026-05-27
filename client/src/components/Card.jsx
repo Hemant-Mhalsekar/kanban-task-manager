@@ -7,13 +7,45 @@ const PRIORITY_STYLES = {
   high:   'bg-red-100 text-red-700',
 };
 
+// ── Due date helpers ─────────────────────────────────────────────
+function formatDueDate(isoString) {
+  if (!isoString) return null;
+  // Parse as local date using the date portion only to avoid TZ shifts
+  const [year, month, day] = isoString.split('T')[0].split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function getDueDateStatus(isoString) {
+  if (!isoString) return null;
+  const [year, month, day] = isoString.split('T')[0].split('-').map(Number);
+  const due   = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (due < today)  return 'overdue';
+  if (due.getTime() === today.getTime()) return 'today';
+  return 'future';
+}
+
+const DUE_TEXT_STYLES = {
+  overdue: 'text-red-500 dark:text-red-400',
+  today:   'text-orange-500 dark:text-orange-400',
+  future:  'text-gray-400 dark:text-gray-500',
+};
+
 export default function Card({ card, index, onDelete, onUpdate }) {
-  const [hovered, setHovered]     = useState(false);
-  const [deleting, setDeleting]   = useState(false);
-  const [editing, setEditing]     = useState(false);
-  const [titleVal, setTitleVal]   = useState(card.title);
-  const [saving, setSaving]       = useState(false);
-  const inputRef                  = useRef(null);
+  const [hovered, setHovered]       = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [editing, setEditing]       = useState(false);
+  const [titleVal, setTitleVal]     = useState(card.title);
+  // Store dueDate as YYYY-MM-DD string (what <input type="date"> uses)
+  const [dueDateVal, setDueDateVal] = useState(
+    card.dueDate ? card.dueDate.split('T')[0] : ''
+  );
+  const [saving, setSaving]         = useState(false);
+  const inputRef                    = useRef(null);
 
   // ── Delete ──────────────────────────────────────────────────
   const handleDelete = async (e) => {
@@ -34,14 +66,30 @@ export default function Card({ card, index, onDelete, onUpdate }) {
 
   const commitEdit = async () => {
     const trimmed = titleVal.trim();
-    if (!trimmed || trimmed === card.title) {
+    // Only save if something actually changed
+    const titleChanged   = trimmed && trimmed !== card.title;
+    const rawCardDue     = card.dueDate ? card.dueDate.split('T')[0] : '';
+    const dueDateChanged = dueDateVal !== rawCardDue;
+
+    if (!trimmed) {
+      // Revert if title was cleared
       setEditing(false);
       setTitleVal(card.title);
+      setDueDateVal(rawCardDue);
       return;
     }
+
+    if (!titleChanged && !dueDateChanged) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      await onUpdate(card._id, { title: trimmed });
+      const payload = {};
+      if (titleChanged)   payload.title   = trimmed;
+      if (dueDateChanged) payload.dueDate = dueDateVal || null;
+      await onUpdate(card._id, payload);
     } finally {
       setSaving(false);
       setEditing(false);
@@ -52,6 +100,10 @@ export default function Card({ card, index, onDelete, onUpdate }) {
     if (e.key === 'Enter')  { e.preventDefault(); commitEdit(); }
     if (e.key === 'Escape') { setEditing(false); setTitleVal(card.title); }
   };
+
+  // ── Computed due date info ───────────────────────────────────
+  const dueDateStatus = getDueDateStatus(card.dueDate);
+  const dueDateLabel  = formatDueDate(card.dueDate);
 
   return (
     <Draggable draggableId={card._id} index={index}>
@@ -65,7 +117,9 @@ export default function Card({ card, index, onDelete, onUpdate }) {
           className={`relative bg-white dark:bg-gray-700 rounded-xl border px-4 py-3 transition-all select-none ${
             snapshot.isDragging
               ? 'border-indigo-400 shadow-lg rotate-1 scale-105'
-              : 'border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'
+              : dueDateStatus === 'overdue'
+                ? 'border-red-300 dark:border-red-600 shadow-sm hover:shadow-md'
+                : 'border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'
           }`}
         >
           {/* Delete button — hover only, hidden while dragging or editing */}
@@ -117,6 +171,33 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
               {card.description}
             </p>
+          )}
+
+          {/* Due date — display (when not editing) */}
+          {dueDateLabel && !editing && (
+            <p className={`mt-2 flex items-center gap-1 text-xs font-medium ${DUE_TEXT_STYLES[dueDateStatus]}`}>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+              </svg>
+              Due: {dueDateLabel}
+            </p>
+          )}
+
+          {/* Due date — inline editor (shown while editing) */}
+          {editing && (
+            <div className="mt-2 space-y-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Due date</label>
+              <input
+                type="date"
+                value={dueDateVal}
+                onChange={(e) => setDueDateVal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter')  { e.preventDefault(); commitEdit(); }
+                  if (e.key === 'Escape') { setEditing(false); setTitleVal(card.title); setDueDateVal(card.dueDate ? card.dueDate.split('T')[0] : ''); }
+                }}
+                className="w-full text-xs text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              />
+            </div>
           )}
 
           {/* Saving indicator */}
