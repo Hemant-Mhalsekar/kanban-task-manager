@@ -9,7 +9,7 @@ const COLUMN_STYLES = {
   done:       { header: 'bg-green-50 dark:bg-green-900/40', dot: 'bg-green-500',   label: 'Done'         },
 };
 
-export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpdateCard }) {
+export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpdateCard, isFiltering }) {
   const [showForm, setShowForm] = useState(false);
   const style = COLUMN_STYLES[columnId] || COLUMN_STYLES.todo;
 
@@ -42,7 +42,9 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
             }`}
           >
             {cards.length === 0 && !showForm && !snapshot.isDraggingOver && (
-              <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4">No cards yet</p>
+              <p className="text-xs text-center text-gray-400 dark:text-gray-500 mt-4">
+                {isFiltering ? 'No cards match your search' : 'No cards yet'}
+              </p>
             )}
 
             {cards.map((card, index) => (

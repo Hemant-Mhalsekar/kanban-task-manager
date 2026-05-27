@@ -16,6 +16,10 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [isDark, setIsDark] = useState(false);
 
+  // ── Search & filter ─────────────────────────────────────────
+  const [search, setSearch]     = useState('');
+  const [priority, setPriority] = useState('all');
+
   const toggleDark = () => {
     setIsDark((prev) => {
       const next = !prev;
@@ -134,9 +138,24 @@ export default function Dashboard() {
     }
   }, [cards]);
 
+  // ── Derived: filtered card set ──────────────────────────────
+  const trimmed = search.trim().toLowerCase();
+  const isFiltering = trimmed !== '' || priority !== 'all';
+
+  const filteredCards = isFiltering
+    ? cards.filter((c) => {
+        const matchesSearch =
+          !trimmed ||
+          c.title.toLowerCase().includes(trimmed) ||
+          (c.description && c.description.toLowerCase().includes(trimmed));
+        const matchesPriority = priority === 'all' || c.priority === priority;
+        return matchesSearch && matchesPriority;
+      })
+    : cards;
+
   // ── Split cards into columns (preserving order) ─────────────
   const cardsByColumn = COLUMNS.reduce((acc, col) => {
-    acc[col] = cards
+    acc[col] = filteredCards
       .filter((c) => c.column === col)
       .sort((a, b) => a.order - b.order);
     return acc;
@@ -190,7 +209,57 @@ export default function Dashboard() {
 
       {/* ── Board area ── */}
       <main className="flex-1 px-6 py-6">
-        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-5">My Board</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 flex-shrink-0">My Board</h1>
+
+          {/* ── Search + filter toolbar ── */}
+          <div className="flex flex-1 items-center gap-2 sm:justify-end">
+
+            {/* Search input */}
+            <div className="relative flex-1 sm:max-w-xs">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400 dark:text-gray-500">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                </svg>
+              </span>
+              <input
+                id="board-search"
+                type="text"
+                placeholder="Search cards…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-colors"
+              />
+            </div>
+
+            {/* Priority dropdown */}
+            <select
+              id="board-priority-filter"
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="text-sm rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer"
+            >
+              <option value="all">All priorities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+
+            {/* Clear button — only when a filter is active */}
+            {isFiltering && (
+              <button
+                onClick={() => { setSearch(''); setPriority('all'); }}
+                title="Clear filters"
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-600 bg-white dark:bg-gray-800 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
 
         {/* Error */}
         {error && (
@@ -218,6 +287,7 @@ export default function Dashboard() {
                   onAddCard={handleAddCard}
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
+                  isFiltering={isFiltering}
                 />
               ))}
             </div>
