@@ -1,14 +1,22 @@
 import { useState } from 'react';
+import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 
 const PRIORITY_OPTIONS = ['low', 'medium', 'high'];
 
 export default function AddCardForm({ onSubmit, onCancel }) {
   const [form, setForm] = useState({ title: '', description: '', priority: 'medium', dueDate: '' });
+  const [selectedLabels, setSelectedLabels] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const toggleLabel = (label) => {
+    setSelectedLabels((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,8 +27,9 @@ export default function AddCardForm({ onSubmit, onCancel }) {
     setLoading(true);
     setError('');
     try {
-      await onSubmit(form);
+      await onSubmit({ ...form, labels: selectedLabels });
       setForm({ title: '', description: '', priority: 'medium', dueDate: '' });
+      setSelectedLabels([]);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add card');
     } finally {
@@ -81,6 +90,33 @@ export default function AddCardForm({ onSubmit, onCancel }) {
           onChange={handleChange}
           className="w-full text-sm text-gray-800 dark:text-gray-100 bg-white dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
         />
+      </div>
+
+      {/* Label chip picker */}
+      <div className="space-y-1">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">
+          Labels <span className="font-normal opacity-70">(optional)</span>
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {ALL_LABELS.map((label) => {
+            const isSelected = selectedLabels.includes(label);
+            const styles = LABEL_STYLES[label];
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => toggleLabel(label)}
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full border transition-colors ${
+                  isSelected
+                    ? styles.chip + ' border-transparent'
+                    : styles.outline + ' bg-transparent'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex gap-2 pt-1">

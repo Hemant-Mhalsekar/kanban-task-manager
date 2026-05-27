@@ -36,6 +36,14 @@ const cardSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    labels: {
+      type: [String],
+      enum: {
+        values: ['Bug', 'Feature', 'Design', 'Research', 'Urgent', 'Review'],
+        message: 'Invalid label value',
+      },
+      default: [],
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
