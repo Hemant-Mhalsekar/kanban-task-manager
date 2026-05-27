@@ -66,7 +66,15 @@ router.put('/:id', async (req, res) => {
 
     if (title !== undefined) card.title = title.trim();
     if (description !== undefined) card.description = description;
-    if (column !== undefined) card.column = column;
+    if (column !== undefined) {
+      card.column = column;
+      // Stamp completedAt when first moved to done; clear when moved away
+      if (column === 'done' && !card.completedAt) {
+        card.completedAt = new Date();
+      } else if (column !== 'done') {
+        card.completedAt = null;
+      }
+    }
     if (order !== undefined) card.order = order;
     if (priority !== undefined) card.priority = priority;
     if (dueDate !== undefined) card.dueDate = dueDate || null;
