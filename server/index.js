@@ -1,17 +1,48 @@
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
+const express    = require('express');
+const http       = require('http');
+const { Server } = require('socket.io');
+const cors       = require('cors');
+const connectDB  = require('./config/db');
 
 // Connect to MongoDB
 connectDB();
 
-const app = express();
+const app    = express();
+const server = http.createServer(app);
+
+// ─── Socket.io ───────────────────────────────────────────────
+// NOTE: Vercel's serverless runtime does not support persistent
+// WebSocket connections. Run this server on a long-lived host
+// (Render, Railway, fly.io, a VPS) to use real-time sync.
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://kanbantodo-list.netlify.app',
+      'http://localhost:3000',
+    ],
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+io.on('connection', (socket) => {
+  console.log(`[socket] client connected — id: ${socket.id}`);
+  socket.on('disconnect', () => {
+    console.log(`[socket] client disconnected — id: ${socket.id}`);
+  });
+});
+
+// Attach io to the app so routes can access it via req.app.get('io')
+app.set('io', io);
 
 // ─── Middleware ───────────────────────────────────────────────
 app.use(cors({
-  origin: 'https://kanbantodo-list.netlify.app',
-  credentials: true
+  origin: [
+    'https://kanbantodo-list.netlify.app',
+    'http://localhost:3000',
+  ],
+  credentials: true,
 }));
 app.use(express.json());
 
@@ -42,6 +73,6 @@ app.use((err, req, res, next) => {
 
 // ─── Start Server ─────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });

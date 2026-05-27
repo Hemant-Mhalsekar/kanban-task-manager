@@ -40,6 +40,9 @@ router.post('/', async (req, res) => {
     });
 
     res.status(201).json(card);
+
+    // Broadcast to all connected clients
+    req.app.get('io')?.emit('card:created', card);
   } catch (err) {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((e) => e.message);
@@ -71,6 +74,9 @@ router.put('/:id', async (req, res) => {
 
     const updated = await card.save();
     res.json(updated);
+
+    // Broadcast to all connected clients
+    req.app.get('io')?.emit('card:updated', updated);
   } catch (err) {
     if (err.name === 'ValidationError') {
       const messages = Object.values(err.errors).map((e) => e.message);
@@ -94,6 +100,9 @@ router.delete('/:id', async (req, res) => {
     }
 
     res.json({ message: 'Card deleted successfully', id: card._id });
+
+    // Broadcast to all connected clients
+    req.app.get('io')?.emit('card:deleted', { id: card._id });
   } catch (err) {
     if (err.name === 'CastError') {
       return res.status(400).json({ message: 'Invalid card ID' });
