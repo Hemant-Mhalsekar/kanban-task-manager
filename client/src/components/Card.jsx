@@ -62,10 +62,10 @@ export default function Card({ card, index, onDelete, onUpdate }) {
           {...provided.dragHandleProps}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
-          className={`relative bg-white rounded-xl border px-4 py-3 transition-all select-none ${
+          className={`relative bg-white dark:bg-gray-700 rounded-xl border px-4 py-3 transition-all select-none ${
             snapshot.isDragging
               ? 'border-indigo-400 shadow-lg rotate-1 scale-105'
-              : 'border-gray-200 shadow-sm hover:shadow-md'
+              : 'border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md'
           }`}
         >
           {/* Delete button — hover only, hidden while dragging or editing */}
@@ -74,7 +74,7 @@ export default function Card({ card, index, onDelete, onUpdate }) {
               onClick={handleDelete}
               disabled={deleting}
               aria-label="Delete card"
-              className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center rounded-full text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors disabled:opacity-50"
             >
               {deleting ? (
                 <span className="text-xs">…</span>
@@ -100,13 +100,13 @@ export default function Card({ card, index, onDelete, onUpdate }) {
               onBlur={commitEdit}
               onKeyDown={handleKeyDown}
               disabled={saving}
-              className="w-full text-sm font-semibold text-gray-800 bg-indigo-50 border border-indigo-300 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-6 disabled:opacity-60"
+              className="w-full text-sm font-semibold text-gray-800 dark:text-gray-100 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-300 dark:border-indigo-600 rounded-lg px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 pr-6 disabled:opacity-60"
             />
           ) : (
             <p
               onClick={startEdit}
               title="Click to edit"
-              className="text-sm font-semibold text-gray-800 leading-snug pr-6 cursor-text hover:text-indigo-600 transition-colors"
+              className="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug pr-6 cursor-text hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
             >
               {card.title}
             </p>
@@ -114,7 +114,7 @@ export default function Card({ card, index, onDelete, onUpdate }) {
 
           {/* Description */}
           {card.description && !editing && (
-            <p className="mt-1 text-xs text-gray-500 leading-relaxed line-clamp-3">
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-3">
               {card.description}
             </p>
           )}

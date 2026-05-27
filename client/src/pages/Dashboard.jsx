@@ -14,6 +14,15 @@ export default function Dashboard() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDark, setIsDark] = useState(false);
+
+  const toggleDark = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      document.documentElement.classList.toggle('dark', next);
+      return next;
+    });
+  };
 
   // ── Fetch cards on mount — sorted by column+order so positions persist ──
   useEffect(() => {
@@ -134,25 +143,45 @@ export default function Dashboard() {
   }, {});
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col transition-colors duration-200">
       {/* ── Topbar ── */}
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
+      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between transition-colors duration-200">
         <div className="flex items-center gap-3">
           <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="currentColor">
               <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM14 11a1 1 0 011 1v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1h-1a1 1 0 110-2h1v-1a1 1 0 011-1z" />
             </svg>
           </div>
-          <span className="font-bold text-gray-800 text-base tracking-tight">Kanban</span>
+          <span className="font-bold text-gray-800 dark:text-gray-100 text-base tracking-tight">Kanban</span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-500 hidden sm:block">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
             {user?.name || user?.email}
           </span>
+
+          {/* Dark mode toggle */}
+          <button
+            onClick={toggleDark}
+            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 transition-colors"
+          >
+            {isDark ? (
+              /* Sun icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              /* Moon icon */
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+              </svg>
+            )}
+          </button>
+
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-gray-600 hover:text-red-500 border border-gray-200 hover:border-red-200 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 border border-gray-200 dark:border-gray-600 hover:border-red-200 dark:hover:border-red-500 px-3 py-1.5 rounded-lg transition-colors"
           >
             Sign out
           </button>
@@ -161,7 +190,7 @@ export default function Dashboard() {
 
       {/* ── Board area ── */}
       <main className="flex-1 px-6 py-6">
-        <h1 className="text-xl font-bold text-gray-800 mb-5">My Board</h1>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-5">My Board</h1>
 
         {/* Error */}
         {error && (
@@ -175,7 +204,7 @@ export default function Dashboard() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {COLUMNS.map((col) => (
-              <div key={col} className="h-48 rounded-2xl bg-gray-200 animate-pulse" />
+              <div key={col} className="h-48 rounded-2xl bg-gray-200 dark:bg-gray-700 animate-pulse" />
             ))}
           </div>
         ) : (
