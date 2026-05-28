@@ -201,12 +201,48 @@ export default function Dashboard() {
     return acc;
   }, {});
 
+  // ── Motivational line based on done-card completion rate ──────
+  const totalCards = cards.length;
+  const doneCards  = cards.filter((c) => c.column === 'done').length;
+  const doneRate   = totalCards === 0 ? 0 : Math.round((doneCards / totalCards) * 100);
+  const motivation =
+    totalCards === 0 || doneRate === 0  ? "Let's get started 🚀" :
+    doneRate < 50                       ? 'You\'re making progress 💪' :
+    doneRate < 80                       ? 'More than halfway there 🔥' :
+    doneRate < 100                      ? 'Almost done, keep going! ⚡' :
+                                          'All done! Great work today 🎉';
+
+  const todayLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+
+  const dotColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+
   return (
-    <div className="min-h-screen flex flex-col transition-colors duration-200"
-         style={{ backgroundColor: isDark ? '#0F1117' : '#F4F5F7' }}>
+    <div
+      className="min-h-screen flex flex-col transition-colors duration-200"
+      style={{
+        backgroundColor: isDark ? '#0F1117' : '#F4F5F7',
+        backgroundImage: `radial-gradient(${dotColor} 1px, transparent 1px)`,
+        backgroundSize: '20px 20px',
+      }}
+    >
 
       {/* ── Header ── */}
-      <header className="bg-white dark:bg-[#13151F] border-b border-gray-200/80 dark:border-white/5 px-6 h-14 flex items-center justify-between flex-shrink-0 transition-colors duration-200">
+      <header
+        className="sticky top-0 z-30 px-6 h-14 flex items-center justify-between flex-shrink-0 transition-colors duration-200"
+        style={{
+          background: isDark ? 'rgba(26,26,46,0.88)' : 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderBottom: isDark
+            ? '1px solid rgba(255,255,255,0.06)'
+            : '1px solid rgba(0,0,0,0.08)',
+          boxShadow: isDark
+            ? '0 1px 0 0 rgba(255,255,255,0.03)'
+            : '0 1px 0 0 rgba(0,0,0,0.04)',
+        }}
+      >
         {/* Logo */}
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
@@ -248,11 +284,13 @@ export default function Dashboard() {
             id="ai-suggestions-btn"
             onClick={() => setAiPanelOpen(true)}
             aria-label="Open AI priority suggestions"
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
-                       bg-indigo-600 hover:bg-indigo-700
-                       text-white
-                       shadow-sm hover:shadow-indigo-500/30 hover:shadow-md
-                       transition-all duration-150"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg text-white transition-all duration-200"
+            style={{
+              background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+              boxShadow: '0 2px 8px rgba(79,70,229,0.35)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 4px 18px rgba(79,70,229,0.6)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(79,70,229,0.35)'; }}
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">AI Suggestions</span>
@@ -263,13 +301,30 @@ export default function Dashboard() {
             id="focus-mode-btn"
             onClick={() => setFocusModeOpen(true)}
             aria-label="Open daily focus mode"
-            className={`relative flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
-                       transition-all duration-150
-                       ${
-                         focusActive
-                           ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm shadow-violet-500/30'
-                           : 'border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:border-violet-300 dark:hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10'
-                       }`}
+            className="relative flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg transition-all duration-200"
+            style={focusActive ? {
+              background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
+              color: 'white',
+              boxShadow: '0 2px 8px rgba(124,58,237,0.4)',
+            } : {
+              border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e5e7eb',
+              color: isDark ? '#d1d5db' : '#4b5563',
+              background: 'transparent',
+            }}
+            onMouseEnter={(e) => {
+              if (!focusActive) {
+                e.currentTarget.style.background = isDark ? 'rgba(124,58,237,0.12)' : 'rgba(124,58,237,0.06)';
+                e.currentTarget.style.borderColor = '#7C3AED';
+                e.currentTarget.style.color = '#7C3AED';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!focusActive) {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
+                e.currentTarget.style.color = isDark ? '#d1d5db' : '#4b5563';
+              }
+            }}
           >
             {focusActive && (
               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
@@ -310,9 +365,14 @@ export default function Dashboard() {
 
         {/* ── Toolbar row ── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white flex-shrink-0 tracking-tight">
-            My Board
-          </h1>
+          <div className="flex-shrink-0">
+            <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+              My Board
+            </h1>
+            <p className="text-[11px] text-gray-400 dark:text-gray-600 mt-0.5">
+              {todayLabel} &nbsp;·&nbsp; <span className="text-gray-500 dark:text-gray-500">{motivation}</span>
+            </p>
+          </div>
 
           {/* Filter group */}
           <div className="flex flex-1 items-center gap-2 sm:justify-end flex-wrap">
@@ -431,7 +491,8 @@ export default function Dashboard() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {COLUMNS.map((col) => (
-              <div key={col} className="h-48 rounded-xl bg-white/60 dark:bg-white/5 animate-pulse" />
+              <div key={col} className="h-48 rounded-2xl animate-pulse"
+                style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.7)' }} />
             ))}
           </div>
         ) : (
