@@ -47,6 +47,7 @@ const DUE_TEXT_STYLES = {
 export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
   const [hovered, setHovered]       = useState(false);
   const [deleting, setDeleting]     = useState(false);
+  const [marking, setMarking]       = useState(false); // marking done/undone
   const [editing, setEditing]       = useState(false);
   const [modalOpen, setModalOpen]   = useState(false);
   const [titleVal, setTitleVal]     = useState(card.title);
@@ -57,7 +58,8 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
   const [saving, setSaving]         = useState(false);
   const inputRef                    = useRef(null);
 
-  const priorityBorder = PRIORITY_BORDER[card.priority] ?? PRIORITY_BORDER.medium;
+  const isDone         = card.column === 'done';
+  const priorityBorder = isDone ? '#10B981' : (PRIORITY_BORDER[card.priority] ?? PRIORITY_BORDER.medium);
   const dueDateStatus  = getDueDateStatus(card.dueDate);
   const dueDateLabel   = formatDueDate(card.dueDate);
 
@@ -65,6 +67,18 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
   const subtasks       = card.subtasks ?? [];
   const completedCount = subtasks.filter((s) => s.completed).length;
   const progress       = subtasks.length > 0 ? (completedCount / subtasks.length) * 100 : 0;
+
+  // ── Mark as Done / Move back ────────────────────────────────
+  const handleMarkDone = async (e) => {
+    e.stopPropagation();
+    setMarking(true);
+    try {
+      const targetColumn = isDone ? 'todo' : 'done';
+      await onUpdate(card._id, { column: targetColumn });
+    } finally {
+      setMarking(false);
+    }
+  };
 
   // ── Delete ──────────────────────────────────────────────────
   const handleDelete = async (e) => {
@@ -164,10 +178,13 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
             style={{
               ...provided.draggableProps.style,
               borderLeft: `4px solid ${priorityBorder}`,
-              background: '#252540',
+              background: isDone ? '#1b1b2e' : '#252540',
               border: snapshot.isDragging
                 ? '1px solid rgba(99,102,241,0.5)'
-                : '1px solid rgba(99,102,241,0.15)',
+                : isDone
+                  ? '1px solid rgba(16,185,129,0.2)'
+                  : '1px solid rgba(99,102,241,0.15)',
+              opacity: isDone ? 0.75 : 1,
               ...(isFocused && !snapshot.isDragging ? {
                 boxShadow: '0 0 0 2px #6366f1, 0 0 20px 4px rgba(99,102,241,0.35)',
               } : {}),
@@ -189,28 +206,68 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
               </span>
             )}
 
-            {/* Delete button — appears on hover */}
+            {/* Hover action buttons — check/move-back + delete */}
             {hovered && !snapshot.isDragging && !editing && (
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                aria-label="Delete card"
-                className="absolute top-2.5 right-2.5 w-5 h-5 flex items-center justify-center rounded-md text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors disabled:opacity-50"
-              >
-                {deleting ? (
-                  <span className="text-xs">…</span>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                )}
-              </button>
+              <div className="absolute top-2 right-2 flex items-center gap-1">
+                {/* Mark done / Move back */}
+                <button
+                  onClick={handleMarkDone}
+                  disabled={marking}
+                  aria-label={isDone ? 'Move back to To Do' : 'Mark as done'}
+                  title={isDone ? 'Move back to To Do' : 'Mark as done'}
+                  className="flex items-center justify-center rounded-md transition-all duration-150 disabled:opacity-40"
+                  style={{
+                    width: isDone ? 'auto' : '20px',
+                    height: '20px',
+                    padding: isDone ? '0 5px' : '0',
+                    fontSize: isDone ? '10px' : undefined,
+                    fontWeight: isDone ? 600 : undefined,
+                    gap: isDone ? '2px' : undefined,
+                    background: isDone ? 'rgba(99,102,241,0.15)' : 'rgba(16,185,129,0.15)',
+                    color: isDone ? 'rgba(129,140,248,0.9)' : '#10B981',
+                    border: isDone ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(16,185,129,0.3)',
+                  }}
+                >
+                  {marking ? (
+                    <span style={{ fontSize: 10 }}>…</span>
+                  ) : isDone ? (
+                    <span>↩ Undo</span>
+                  ) : (
+                    /* Checkmark SVG */
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+
+                {/* Delete */}
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  aria-label="Delete card"
+                  className="w-5 h-5 flex items-center justify-center rounded-md transition-colors disabled:opacity-50"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.3)'; e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {deleting ? (
+                    <span className="text-xs">…</span>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             )}
 
             {/* Title row — priority dot + title */}
-            <div className="flex items-start gap-2 pr-5">
+            <div className="flex items-start gap-2 pr-16">
+              {/* Priority dot — gray when done */}
               <span
-                className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[card.priority] ?? PRIORITY_DOT.medium}`}
+                className={`mt-1.5 w-2 h-2 rounded-full flex-shrink-0 ${
+                  isDone ? 'bg-gray-600' : (PRIORITY_DOT[card.priority] ?? PRIORITY_DOT.medium)
+                }`}
               />
               {editing ? (
                 <input
@@ -227,9 +284,12 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
                   onClick={() => !snapshot.isDragging && setModalOpen(true)}
                   title="Click to open details"
                   className="flex-1 text-sm font-semibold leading-snug cursor-pointer transition-colors"
-                  style={{ color: 'rgba(255,255,255,0.88)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#818cf8'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.88)'}
+                  style={{
+                    color: isDone ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.88)',
+                    textDecoration: isDone ? 'line-through' : 'none',
+                  }}
+                  onMouseEnter={(e) => { if (!isDone) e.currentTarget.style.color = '#818cf8'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = isDone ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.88)'; }}
                 >
                   {card.title}
                 </p>
