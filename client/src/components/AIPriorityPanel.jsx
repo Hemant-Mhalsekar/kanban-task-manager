@@ -81,7 +81,7 @@ export default function AIPriorityPanel({ onClose }) {
                 AI Priority Suggestions
               </h2>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                Powered by Gemini
+                Powered by Groq
               </p>
             </div>
           </div>
@@ -110,7 +110,7 @@ export default function AIPriorityPanel({ onClose }) {
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Analyzing your tasks…</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Gemini is thinking</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Groq is thinking</p>
               </div>
             </div>
           )}

@@ -90,4 +90,55 @@ Order from most urgent to least urgent.`;
   }
 });
 
+// ─── POST /api/ai/subtasks ────────────────────────────────────────────────────
+// Given a card's title and description, returns an array of suggested subtasks.
+router.post('/subtasks', async (req, res) => {
+  try {
+    const { title, description } = req.body;
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Task title is required' });
+    }
+
+    const prompt = `You are a productivity assistant. Based on this task:
+Title: ${String(title).trim()}
+Description: ${String(description || '').trim() || 'No description provided'}
+
+Suggest 4-6 practical, specific, and actionable subtasks to complete this task.
+Return ONLY a JSON array in this format, no extra text:
+[
+  { "title": "subtask title" },
+  { "title": "subtask title" }
+]`;
+
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+    });
+
+    const text = (completion.choices[0]?.message?.content ?? '').trim();
+
+    // Strip markdown code fences if present
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    let suggestions;
+    try {
+      suggestions = JSON.parse(cleaned);
+    } catch {
+      console.error('[AI] Failed to parse Groq subtask response:', text);
+      return res.status(500).json({
+        message: 'AI returned an unexpected response format. Please try again.',
+      });
+    }
+
+    return res.json({ suggestions });
+  } catch (err) {
+    console.error('[AI] Subtask route error:', err.message);
+    return res.status(500).json({
+      message: 'AI suggestions unavailable. Please try again later.',
+    });
+  }
+});
+
 module.exports = router;
