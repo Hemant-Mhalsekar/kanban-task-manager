@@ -61,6 +61,9 @@ app.use('/api/cards', require('./routes/cards'));
 // Analytics
 app.use('/api/analytics', require('./routes/analytics'));
 
+// AI
+app.use('/api/ai', require('./routes/ai'));
+
 // ─── 404 Handler ─────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
