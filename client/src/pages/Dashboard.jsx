@@ -393,8 +393,15 @@ export default function Dashboard() {
                 id="board-priority-filter"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="h-8 text-sm bg-transparent px-3 focus:outline-none cursor-pointer appearance-none"
-                style={{ color: 'rgba(255,255,255,0.65)' }}
+                className="h-8 text-sm px-3 focus:outline-none cursor-pointer appearance-none"
+                style={{
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.65)',
+                  border: 'none',
+                  borderRadius: 0,
+                  boxShadow: 'none',
+                  colorScheme: 'dark',
+                }}
               >
                 <option value="all">All priorities</option>
                 <option value="low">Low</option>
@@ -443,7 +450,10 @@ export default function Dashboard() {
                               return next;
                             });
                           }}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                          className="w-full flex items-center gap-2 px-3 py-1.5 transition-colors"
+                          style={{ borderRadius: '0.375rem' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#1E1E35'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                         >
                           <span className={`flex-shrink-0 w-3.5 h-3.5 rounded border-2 flex items-center justify-center transition-colors ${
                             isActive ? 'bg-indigo-600 border-indigo-600' : 'border-gray-300 dark:border-gray-600'
