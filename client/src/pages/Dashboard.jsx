@@ -101,9 +101,16 @@ export default function Dashboard() {
   }, []);
 
   // ── Update card ─────────────────────────────────────────────
-  const handleUpdateCard = useCallback(async (id, data) => {
+  // `fullCard` is passed by CardModal after subtask mutations (the API already
+  // returned the saved doc) so we skip the PUT call and merge directly.
+  const handleUpdateCard = useCallback(async (id, data, fullCard) => {
+    if (fullCard) {
+      setCards((prev) => prev.map((c) => (c._id === id ? { ...c, ...fullCard } : c)));
+      return fullCard;
+    }
     const updated = await updateCard(id, data);
     setCards((prev) => prev.map((c) => (c._id === id ? { ...c, ...updated } : c)));
+    return updated;
   }, []);
 
   // ── Logout ──────────────────────────────────────────────────

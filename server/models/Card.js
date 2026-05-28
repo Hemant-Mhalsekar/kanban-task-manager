@@ -48,6 +48,17 @@ const cardSchema = new mongoose.Schema(
       },
       default: [],
     },
+    subtasks: {
+      type: [
+        {
+          _id:       { type: mongoose.Schema.Types.ObjectId, auto: true },
+          title:     { type: String, required: [true, 'Subtask title is required'], trim: true },
+          completed: { type: Boolean, default: false },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
