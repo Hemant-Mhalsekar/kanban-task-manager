@@ -41,10 +41,16 @@ router.post('/priority', async (req, res) => {
       return res.status(200).json({ suggestions: [], empty: true });
     }
 
-    // Limit to 10 tasks to avoid token limits — prioritise incomplete first
+    // Only send INCOMPLETE tasks to AI — done tasks are not actionable
     const incomplete = all.filter((c) => c.column !== 'done');
-    const done       = all.filter((c) => c.column === 'done');
-    const cards      = [...incomplete, ...done].slice(0, 10);
+    console.log(`[AI] priority: ${all.length} total cards, ${incomplete.length} incomplete, ${all.length - incomplete.length} done (excluded)`);
+
+    if (incomplete.length === 0) {
+      return res.status(200).json({ suggestions: [], allDone: true });
+    }
+
+    // Limit to 10 to avoid token limits
+    const cards = incomplete.slice(0, 10);
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -75,9 +81,8 @@ Analyze these tasks and rank them from MOST to LEAST urgent to complete. Apply t
 2. Tasks due today or tomorrow rank above everything else except overdue.
 3. "In Progress" tasks rank higher than "To Do" tasks at the same priority level.
 4. High priority + no deadline ranks above low/medium priority + far deadline.
-5. "Done" tasks rank last.
 
-Tasks:
+Tasks (all are incomplete — none are done):
 ${taskList}
 
 Return ONLY a JSON array — no markdown, no extra text:
@@ -186,13 +191,14 @@ router.post('/focus', async (req, res) => {
   const t0 = Date.now();
   console.log(`[AI] focus → model: ${MODEL}`);
   try {
-    // Fetch all incomplete cards
+    // Fetch all incomplete cards (done cards are explicitly excluded via $ne)
     const cards = await Card.find({
       user: req.user.id,
       column: { $ne: 'done' },
     }).sort({ column: 1, order: 1 }).lean();
 
     const count = cards?.length ?? 0;
+    console.log(`[AI] focus: ${count} incomplete cards fetched (done cards excluded by DB query)`);
 
     // If fewer than 3 incomplete tasks, return all of them directly (no AI needed)
     if (count === 0) {

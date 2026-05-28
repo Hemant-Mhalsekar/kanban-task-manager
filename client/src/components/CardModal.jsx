@@ -51,6 +51,9 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
   const [aiSuggestions, setAiSuggestions] = useState([]);   // [{ title, added }]
   const [aiError, setAiError]           = useState('');
   const [addingAll, setAddingAll]       = useState(false);
+  // ── Mark done state ──────────────────────────────────────────────────
+  const [marking, setMarking]           = useState(false);
+  const isDone = card.column === 'done';
 
   const titleRef   = useRef(null);
   const descRef    = useRef(null);
@@ -528,6 +531,59 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                 </button>
               </div>
             </section>
+
+            {/* ── Mark as Complete button ── */}
+            <div className="pt-2">
+              <button
+                id="modal-mark-done-btn"
+                onClick={async () => {
+                  setMarking(true);
+                  try {
+                    const targetColumn = isDone ? 'todo' : 'done';
+                    const updated = await onUpdate(card._id, { column: targetColumn });
+                    if (updated) setCard(updated);
+                  } finally {
+                    setMarking(false);
+                  }
+                }}
+                disabled={marking}
+                className="w-full py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-150 disabled:opacity-50"
+                style={isDone ? {
+                  background: 'rgba(99,102,241,0.12)',
+                  border: '1px solid rgba(99,102,241,0.35)',
+                  color: 'rgba(129,140,248,0.9)',
+                } : {
+                  background: 'rgba(16,185,129,0.15)',
+                  border: '1px solid rgba(16,185,129,0.4)',
+                  color: '#10B981',
+                }}
+                onMouseEnter={(e) => {
+                  if (!marking) e.currentTarget.style.opacity = '0.85';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.opacity = '1';
+                }}
+              >
+                {marking ? (
+                  <>… Saving</>
+                ) : isDone ? (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                    Mark as Incomplete
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Mark as Complete
+                  </>
+                )}
+              </button>
+            </div>
+
           </div>
         </div>
       </div>

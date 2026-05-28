@@ -26,7 +26,7 @@ function getReasonStyle(reason = '') {
 }
 
 export default function AIPriorityPanel({ onClose }) {
-  const [status, setStatus]           = useState('idle'); // idle | loading | success | error
+  const [status, setStatus]           = useState('idle'); // idle | loading | success | error | empty | allDone
   const [suggestions, setSuggestions] = useState([]);
   const [errorMsg, setErrorMsg]       = useState('');
 
@@ -35,7 +35,9 @@ export default function AIPriorityPanel({ onClose }) {
     setErrorMsg('');
     try {
       const data = await getAIPriority();
-      if (data.empty) {
+      if (data.allDone) {
+        setStatus('allDone');
+      } else if (data.empty) {
         setStatus('empty');
       } else {
         setSuggestions(data.suggestions);
@@ -120,6 +122,19 @@ export default function AIPriorityPanel({ onClose }) {
               <div className="text-center">
                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Analyzing your tasks…</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Groq is thinking</p>
+              </div>
+            </div>
+          )}
+
+          {/* ── All Done 🎉 ── */}
+          {status === 'allDone' && (
+            <div className="flex flex-col items-center justify-center h-52 gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-2xl">
+                🎉
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">All tasks completed!</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Nothing left to prioritise — great work!</p>
               </div>
             </div>
           )}
