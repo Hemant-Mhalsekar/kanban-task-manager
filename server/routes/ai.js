@@ -1,14 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const Card = require('../models/Card');
 const { protect } = require('../middleware/authMiddleware');
+
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // All routes require a valid JWT
 router.use(protect);
 
 // ─── POST /api/ai/priority ────────────────────────────────────────────────────
-// Fetches all cards for the logged-in user, sends them to Gemini,
+// Fetches all cards for the logged-in user, sends them to Groq (Llama 3.3),
 // and returns an ordered priority suggestion list.
 router.post('/priority', async (req, res) => {
   try {
@@ -33,7 +35,7 @@ router.post('/priority', async (req, res) => {
       })
       .join('\n');
 
-    // 3. Build the Gemini prompt
+    // 3. Build the prompt
     const prompt = `You are a productivity assistant. Analyze these tasks and suggest the optimal order to complete them based on deadline urgency, priority level, and current status.
 
 Tasks:
@@ -49,12 +51,14 @@ Return ONLY a JSON array in this format, no extra text:
 ]
 Order from most urgent to least urgent.`;
 
-    // 4. Call Gemini API
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    // 4. Call Groq API
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+    });
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const text = (completion.choices[0]?.message?.content ?? '').trim();
 
     // 5. Strip markdown code fences if present (```json ... ```)
     const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
@@ -64,7 +68,7 @@ Order from most urgent to least urgent.`;
     try {
       suggestions = JSON.parse(cleaned);
     } catch {
-      console.error('[AI] Failed to parse Gemini response:', text);
+      console.error('[AI] Failed to parse Groq response:', text);
       return res.status(500).json({
         message: 'AI returned an unexpected response format. Please try again.',
       });
