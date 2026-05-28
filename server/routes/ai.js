@@ -148,4 +148,89 @@ Return ONLY a JSON array in this format, no extra text:
   }
 });
 
+// ─── POST /api/ai/focus ──────────────────────────────────────────────────────
+// Picks the top-3 most important incomplete tasks for today's focus session.
+router.post('/focus', async (req, res) => {
+  try {
+    // 1. Fetch only incomplete cards (not in "done")
+    const cards = await Card.find({
+      user: req.user.id,
+      column: { $ne: 'done' },
+    }).sort({ column: 1, order: 1 });
+
+    if (!cards || cards.length < 3) {
+      return res.status(200).json({ tooFew: true, count: cards?.length ?? 0 });
+    }
+
+    // 2. Today's date string for the prompt
+    const todayStr = new Date().toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+
+    // 3. Build task list string
+    const taskList = cards
+      .map((c) => {
+        const due = c.dueDate
+          ? new Date(c.dueDate).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'short', day: 'numeric',
+            })
+          : 'No due date';
+        return `- ID: ${c._id} | Title: "${c.title}" | Priority: ${c.priority} | Status: ${c.column} | Due: ${due}`;
+      })
+      .join('\n');
+
+    // 4. Build prompt
+    const prompt = `You are a productivity assistant. The user has these pending tasks today. Pick the TOP 3 most important tasks to focus on today based on deadlines, priority, and status.
+
+Today's date: ${todayStr}
+
+Tasks:
+${taskList}
+
+Return ONLY a JSON array of exactly 3 tasks, no extra text:
+[
+  {
+    "_id": "task id",
+    "title": "task title",
+    "reason": "one short sentence why focus on this today"
+  }
+]`;
+
+    // 5. Call Groq API
+    const completion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+    });
+
+    const text = (completion.choices[0]?.message?.content ?? '').trim();
+    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    let focus;
+    try {
+      focus = JSON.parse(cleaned);
+    } catch {
+      console.error('[AI] Failed to parse Groq focus response:', text);
+      return res.status(500).json({
+        message: 'AI returned an unexpected response format. Please try again.',
+      });
+    }
+
+    // 6. Enrich with priority + dueDate from DB
+    const cardMap = new Map(cards.map((c) => [String(c._id), c]));
+    const enriched = focus.map((f) => ({
+      ...f,
+      priority: cardMap.get(String(f._id))?.priority ?? 'medium',
+      dueDate:  cardMap.get(String(f._id))?.dueDate  ?? null,
+    }));
+
+    return res.json({ focus: enriched });
+  } catch (err) {
+    console.error('[AI] Focus route error:', err.message);
+    return res.status(500).json({
+      message: 'AI focus unavailable. Please try again later.',
+    });
+  }
+});
+
 module.exports = router;

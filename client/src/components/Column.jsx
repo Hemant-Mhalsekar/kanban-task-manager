@@ -28,7 +28,7 @@ const COLUMN_CONFIG = {
   },
 };
 
-export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpdateCard, isFiltering }) {
+export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpdateCard, isFiltering, focusIds }) {
   const [showForm, setShowForm] = useState(false);
   const config = COLUMN_CONFIG[columnId] || COLUMN_CONFIG.todo;
 
@@ -75,7 +75,7 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
             )}
 
             {cards.map((card, index) => (
-              <Card key={card._id} card={card} index={index} onDelete={onDeleteCard} onUpdate={onUpdateCard} />
+              <Card key={card._id} card={card} index={index} onDelete={onDeleteCard} onUpdate={onUpdateCard} isFocused={focusIds?.has(card._id)} />
             ))}
 
             {provided.placeholder}

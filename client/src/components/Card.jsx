@@ -44,7 +44,7 @@ const DUE_TEXT_STYLES = {
   future:  'text-gray-400 dark:text-gray-600',
 };
 
-export default function Card({ card, index, onDelete, onUpdate }) {
+export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
   const [hovered, setHovered]       = useState(false);
   const [deleting, setDeleting]     = useState(false);
   const [editing, setEditing]       = useState(false);
@@ -164,6 +164,9 @@ export default function Card({ card, index, onDelete, onUpdate }) {
             style={{
               ...provided.draggableProps.style,
               borderLeft: `3px solid ${priorityBorder}`,
+              ...(isFocused && !snapshot.isDragging ? {
+                boxShadow: '0 0 0 2px #6366f1, 0 0 20px 4px rgba(99,102,241,0.35)',
+              } : {}),
             }}
             className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-150
               bg-white dark:bg-[#1E2130]
@@ -173,6 +176,17 @@ export default function Card({ card, index, onDelete, onUpdate }) {
                 : 'shadow-sm hover:shadow-md'
               }`}
           >
+            {/* Focus badge */}
+            {isFocused && !snapshot.isDragging && (
+              <span
+                className="absolute top-2 left-2 text-sm leading-none select-none"
+                title="Focus task"
+                aria-label="Focus task"
+              >
+                🎯
+              </span>
+            )}
+
             {/* Delete button — appears on hover */}
             {hovered && !snapshot.isDragging && !editing && (
               <button
