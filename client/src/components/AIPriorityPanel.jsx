@@ -16,6 +16,15 @@ const RANK_COLORS = [
   'bg-indigo-300 text-indigo-900',
 ];
 
+// Colour-codes reason text based on urgency keywords from the AI
+function getReasonStyle(reason = '') {
+  if (reason.includes('OVERDUE'))    return 'text-red-500 dark:text-red-400';
+  if (reason.includes('TODAY'))      return 'text-orange-500 dark:text-orange-400';
+  if (reason.includes('TOMORROW'))   return 'text-amber-500 dark:text-amber-400';
+  if (reason.includes('approaching')) return 'text-yellow-500 dark:text-yellow-400';
+  return 'text-gray-400 dark:text-gray-500';
+}
+
 export default function AIPriorityPanel({ onClose }) {
   const [status, setStatus]           = useState('idle'); // idle | loading | success | error
   const [suggestions, setSuggestions] = useState([]);
@@ -185,7 +194,7 @@ export default function AIPriorityPanel({ onClose }) {
                         )}
                       </div>
 
-                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500 italic leading-relaxed">
+                      <p className={`mt-1 text-xs italic leading-relaxed ${getReasonStyle(item.reason)}`}>
                         <ChevronRight className="inline w-3 h-3 -mt-0.5 text-indigo-400 dark:text-indigo-500" />
                         {' '}{item.reason}
                       </p>

@@ -36,7 +36,14 @@ router.post('/priority', async (req, res) => {
       .join('\n');
 
     // 3. Build the prompt
-    const prompt = `You are a productivity assistant. Analyze these tasks and suggest the optimal order to complete them based on deadline urgency, priority level, and current status.
+    const prompt = `You are a productivity assistant. Analyze these tasks and suggest the optimal order to complete them.
+
+For each task mention:
+- If deadline is today → say "Due TODAY - urgent!"
+- If deadline is tomorrow → say "Due TOMORROW - act soon"
+- If deadline is within 3 days → say "Due in X days - approaching"
+- If deadline is overdue → say "OVERDUE by X days - critical!"
+- If no deadline → base order on priority level
 
 Tasks:
 ${taskList}
@@ -46,10 +53,10 @@ Return ONLY a JSON array in this format, no extra text:
   {
     "_id": "task id",
     "title": "task title",
-    "reason": "one short sentence why this should be done first"
+    "reason": "one short sentence with deadline urgency info"
   }
 ]
-Order from most urgent to least urgent.`;
+Order from most critical to least critical.`;
 
     // 4. Call Groq API
     const completion = await groq.chat.completions.create({
