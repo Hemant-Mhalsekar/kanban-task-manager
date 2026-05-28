@@ -164,16 +164,18 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
             style={{
               ...provided.draggableProps.style,
               borderLeft: `4px solid ${priorityBorder}`,
-              background: snapshot.isDragging ? '#1E1E35' : '#1E1E35',
+              background: '#252540',
+              border: snapshot.isDragging
+                ? '1px solid rgba(99,102,241,0.5)'
+                : '1px solid rgba(99,102,241,0.15)',
               ...(isFocused && !snapshot.isDragging ? {
                 boxShadow: '0 0 0 2px #6366f1, 0 0 20px 4px rgba(99,102,241,0.35)',
               } : {}),
             }}
             className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-200
-              border
               ${snapshot.isDragging
-                ? 'shadow-xl rotate-1 scale-[1.03] border-indigo-500/50'
-                : 'shadow-sm hover:shadow-lg hover:shadow-indigo-900/20 hover:scale-[1.01] border-white/5 hover:border-indigo-500/25'
+                ? 'shadow-xl rotate-1 scale-[1.03]'
+                : 'shadow-sm hover:shadow-lg hover:shadow-indigo-900/30 hover:scale-[1.01]'
               }`}
           >
             {/* Focus badge */}
