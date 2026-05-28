@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2 } from 'lucide-react';
+import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCards, createCard, deleteCard, updateCard } from '../api/cards';
 import Column from '../components/Column';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 import socket from '../socket';
+import AIPriorityPanel from '../components/AIPriorityPanel';
 
 const COLUMNS = ['todo', 'inprogress', 'done'];
 
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isDark, setIsDark] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
 
   // ── Search & filter ─────────────────────────────────────────
   const [search, setSearch]               = useState('');
@@ -222,6 +224,21 @@ export default function Dashboard() {
             {user?.name || user?.email}
           </span>
 
+          {/* AI Suggestions button */}
+          <button
+            id="ai-suggestions-btn"
+            onClick={() => setAiPanelOpen(true)}
+            aria-label="Open AI priority suggestions"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
+                       bg-indigo-600 hover:bg-indigo-700
+                       text-white
+                       shadow-sm hover:shadow-indigo-500/30 hover:shadow-md
+                       transition-all duration-150"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">AI Suggestions</span>
+          </button>
+
           {/* Dark mode toggle */}
           <button
             onClick={toggleDark}
@@ -391,6 +408,11 @@ export default function Dashboard() {
           </DragDropContext>
         )}
       </main>
+
+      {/* ── AI Priority Panel ── */}
+      {aiPanelOpen && (
+        <AIPriorityPanel onClose={() => setAiPanelOpen(false)} />
+      )}
     </div>
   );
 }
