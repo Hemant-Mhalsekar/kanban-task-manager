@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Plus, Trash2, CheckSquare, Square, Calendar, Tag, Flag, Sparkles, Loader2, CheckCheck } from 'lucide-react';
 import { addSubtask, toggleSubtask, deleteSubtask, suggestSubtasks } from '../api/cards';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
@@ -196,12 +197,13 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
   const borderColor    = PRIORITY_BORDER[card.priority] ?? PRIORITY_BORDER.medium;
   const allAdded       = aiSuggestions.length > 0 && aiSuggestions.every((s) => s.added);
 
-  return (
+  return ReactDOM.createPortal(
     <>
       {/* Backdrop */}
       <div
         ref={overlayRef}
-        className="fixed inset-0 z-50 bg-black/50 backdrop-blur-[3px] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+        style={{ backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
         onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}
         aria-modal="true"
         role="dialog"
@@ -209,14 +211,17 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
       >
         {/* Modal panel */}
         <div
-          className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl overflow-hidden
-                     bg-white dark:bg-[#13151F]
-                     border border-gray-200 dark:border-white/8
-                     shadow-2xl"
-          style={{ borderTop: `4px solid ${borderColor}` }}
+          className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl overflow-hidden shadow-2xl"
+          style={{
+            background: '#16162a',
+            border: '1px solid rgba(99,102,241,0.25)',
+            borderTop: `4px solid ${borderColor}`,
+          }}
+          onClick={(e) => e.stopPropagation()}
         >
           {/* ── Header ── */}
-          <div className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-gray-100 dark:border-white/6 flex-shrink-0">
+          <div className="flex items-start gap-3 px-6 pt-5 pb-4 border-b flex-shrink-0"
+               style={{ borderColor: 'rgba(99,102,241,0.15)' }}>
             <div className="flex-1 min-w-0">
               {editingTitle ? (
                 <input
@@ -237,8 +242,8 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                 <h2
                   onClick={() => setEditingTitle(true)}
                   title="Click to edit title"
-                  className={`text-lg font-bold text-gray-900 dark:text-white cursor-text
-                              hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors
+                  className={`text-lg font-bold cursor-text transition-colors
+                              text-white/90 hover:text-indigo-400
                               ${savingField === 'title' ? 'opacity-60' : ''}`}
                 >
                   {card.title}
@@ -282,11 +287,13 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
           </div>
 
           {/* ── Scrollable body ── */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
+               style={{ scrollbarColor: 'rgba(99,102,241,0.3) transparent' }}>
 
             {/* Description */}
             <section>
-              <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2"
+                 style={{ color: 'rgba(255,255,255,0.4)' }}>
                 Description
               </p>
               {editingDesc ? (
@@ -310,17 +317,13 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                 <div
                   onClick={() => setEditingDesc(true)}
                   title="Click to edit description"
-                  className={`min-h-[2.5rem] text-sm rounded-xl px-3 py-2 cursor-text
-                              text-gray-600 dark:text-gray-400
-                              border border-transparent
-                              hover:border-gray-200 dark:hover:border-white/8
-                              hover:bg-gray-50 dark:hover:bg-white/4
-                              transition-colors
+                  className={`min-h-[2.5rem] text-sm rounded-xl px-3 py-2 cursor-text transition-colors
                               ${savingField === 'desc' ? 'opacity-60' : ''}`}
+                  style={{ color: 'rgba(255,255,255,0.6)' }}
                 >
                   {card.description
                     ? <span className="whitespace-pre-wrap">{card.description}</span>
-                    : <span className="text-gray-300 dark:text-gray-600 italic">No description — click to add one</span>
+                    : <span style={{ color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>No description — click to add one</span>
                   }
                 </div>
               )}
@@ -528,7 +531,8 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

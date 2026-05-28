@@ -164,19 +164,16 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
             style={{
               ...provided.draggableProps.style,
               borderLeft: `4px solid ${priorityBorder}`,
-              background: snapshot.isDragging
-                ? undefined
-                : 'linear-gradient(160deg, #ffffff 0%, #fafafe 100%)',
+              background: snapshot.isDragging ? '#1E1E35' : '#1E1E35',
               ...(isFocused && !snapshot.isDragging ? {
                 boxShadow: '0 0 0 2px #6366f1, 0 0 20px 4px rgba(99,102,241,0.35)',
               } : {}),
             }}
             className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-200
-              dark:bg-gradient-to-br dark:from-[#1E2130] dark:to-[#1a1c2e]
-              border border-gray-200/70 dark:border-white/5
+              border
               ${snapshot.isDragging
-                ? 'shadow-xl rotate-1 scale-[1.03] border-indigo-300 dark:border-indigo-500/50'
-                : 'shadow-sm hover:shadow-md hover:scale-[1.01]'
+                ? 'shadow-xl rotate-1 scale-[1.03] border-indigo-500/50'
+                : 'shadow-sm hover:shadow-lg hover:shadow-indigo-900/20 hover:scale-[1.01] border-white/5 hover:border-indigo-500/25'
               }`}
           >
             {/* Focus badge */}
@@ -227,7 +224,10 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
                 <p
                   onClick={() => !snapshot.isDragging && setModalOpen(true)}
                   title="Click to open details"
-                  className="flex-1 text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                  className="flex-1 text-sm font-semibold leading-snug cursor-pointer transition-colors"
+                  style={{ color: 'rgba(255,255,255,0.88)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#818cf8'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.88)'}
                 >
                   {card.title}
                 </p>
@@ -236,7 +236,8 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
 
             {/* Description */}
             {card.description && !editing && (
-              <p className="mt-1.5 ml-4 text-xs text-gray-500 dark:text-gray-500 leading-relaxed line-clamp-3">
+              <p className="mt-1.5 ml-4 text-xs leading-relaxed line-clamp-2"
+                 style={{ color: 'rgba(255,255,255,0.45)' }}>
                 {card.description}
               </p>
             )}
@@ -314,28 +315,54 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
               </div>
             )}
 
-            {/* ── Subtask progress bar ── */}
+            {/* ── Subtask preview ── */}
             {!editing && subtasks.length > 0 && (
-              <div className="mt-3 ml-4 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">
-                    {completedCount}/{subtasks.length} subtasks
-                  </span>
-                  {completedCount === subtasks.length && (
-                    <span className="text-[10px] font-semibold text-emerald-500 dark:text-emerald-400">All done!</span>
-                  )}
-                </div>
-                <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-white/8 overflow-hidden">
+              <div
+                className="mt-3 ml-4 space-y-1.5 cursor-pointer"
+                onClick={() => !snapshot.isDragging && setModalOpen(true)}
+              >
+                {/* Progress bar */}
+                <div className="h-1 w-full rounded-full overflow-hidden"
+                     style={{ background: 'rgba(255,255,255,0.08)' }}>
                   <div
                     className="h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${progress}%`,
-                      backgroundColor: progress === 100 ? '#10B981' : '#6366F1',
+                      background: progress === 100
+                        ? '#10B981'
+                        : 'linear-gradient(90deg, #6366F1, #8B5CF6)',
                     }}
                   />
                 </div>
+                {/* Count */}
+                <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  {completedCount}/{subtasks.length} subtasks
+                  {completedCount === subtasks.length && (
+                    <span className="ml-1.5 text-emerald-400">All done!</span>
+                  )}
+                </p>
+                {/* First 2 incomplete subtask titles */}
+                {subtasks
+                  .filter((s) => !s.completed)
+                  .slice(0, 2)
+                  .map((s) => (
+                    <div key={s._id} className="flex items-center gap-1.5">
+                      <span
+                        className="flex-shrink-0 w-3 h-3 rounded border"
+                        style={{ borderColor: 'rgba(255,255,255,0.2)' }}
+                      />
+                      <span
+                        className="text-[11px] leading-tight truncate"
+                        style={{ color: 'rgba(255,255,255,0.45)' }}
+                      >
+                        {s.title}
+                      </span>
+                    </div>
+                  ))
+                }
               </div>
             )}
+
 
             {/* Saving indicator */}
             {saving && (
