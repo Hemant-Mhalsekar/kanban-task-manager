@@ -41,7 +41,7 @@ function fmtTime(seconds) {
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT
 // ─────────────────────────────────────────────────────────────────────────────
-export default function FocusMode({ onClose, onStartFocus, allCards = [] }) {
+export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCards = [] }) {
   // screen: 'select' | 'timer'
   const [screen, setScreen] = useState('select');
   // Task selection state
@@ -101,7 +101,14 @@ export default function FocusMode({ onClose, onStartFocus, allCards = [] }) {
     if (!running || done) { clearInterval(intervalRef.current); return; }
     intervalRef.current = setInterval(() => {
       setSecsLeft((prev) => {
-        if (prev <= 1) { clearInterval(intervalRef.current); setRunning(false); setDone(true); return 0; }
+        if (prev <= 1) {
+          clearInterval(intervalRef.current);
+          setRunning(false);
+          setDone(true);
+          // Natural timer expiry — clear board highlights
+          onSessionEnd?.();
+          return 0;
+        }
         return prev - 1;
       });
     }, 1000);
@@ -147,8 +154,17 @@ export default function FocusMode({ onClose, onStartFocus, allCards = [] }) {
         onToggleCheck={(id) => setChecked((c) => ({ ...c, [id]: !c[id] }))}
         onRequestEnd={() => setConfirmEnd(true)}
         onCancelEnd={() => setConfirmEnd(false)}
-        onConfirmEnd={() => { setRunning(false); setDone(true); setConfirmEnd(false); clearInterval(intervalRef.current); }}
-        onBackToBoard={onClose}
+        onConfirmEnd={() => {
+          clearInterval(intervalRef.current);
+          setRunning(false);
+          setDone(true);
+          setConfirmEnd(false);
+          onSessionEnd?.(); // clear board highlights
+        }}
+        onBackToBoard={() => {
+          onSessionEnd?.(); // clear board highlights
+          onClose();
+        }}
       />
     );
   }
