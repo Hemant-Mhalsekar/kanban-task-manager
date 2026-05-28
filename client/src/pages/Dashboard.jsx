@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2, Sparkles } from 'lucide-react';
+import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2, Sparkles, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCards, createCard, deleteCard, updateCard } from '../api/cards';
 import Column from '../components/Column';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 import socket from '../socket';
 import AIPriorityPanel from '../components/AIPriorityPanel';
+import FocusMode from '../components/FocusMode';
 
 const COLUMNS = ['todo', 'inprogress', 'done'];
 
@@ -20,6 +21,8 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [isDark, setIsDark] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
+  const [focusModeOpen, setFocusModeOpen] = useState(false);
+  const [focusIds, setFocusIds]           = useState(new Set()); // IDs of focused cards
 
   // ── Search & filter ─────────────────────────────────────────
   const [search, setSearch]               = useState('');
@@ -157,6 +160,14 @@ export default function Dashboard() {
 
     try {
       await updateCard(draggableId, { column: dstCol, order: destination.index });
+      // If a focused card is moved to Done, remove it from focus
+      if (dstCol === 'done') {
+        setFocusIds((prev) => {
+          const next = new Set(prev);
+          next.delete(draggableId);
+          return next;
+        });
+      }
     } catch {
       setCards(snapshot);
       setError('Failed to save card position. Please try again.');
@@ -244,6 +255,25 @@ export default function Dashboard() {
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">AI Suggestions</span>
+          </button>
+
+          {/* Focus Mode button */}
+          <button
+            id="focus-mode-btn"
+            onClick={() => setFocusModeOpen(true)}
+            aria-label="Open daily focus mode"
+            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
+                       transition-all duration-150
+                       ${
+                         focusIds.size > 0
+                           ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm shadow-violet-500/30'
+                           : 'border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:border-violet-300 dark:hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10'
+                       }`}
+          >
+            <Target className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {focusIds.size > 0 ? 'In Focus' : 'Focus Mode'}
+            </span>
           </button>
 
           {/* Dark mode toggle */}
@@ -409,6 +439,7 @@ export default function Dashboard() {
                   onDeleteCard={handleDeleteCard}
                   onUpdateCard={handleUpdateCard}
                   isFiltering={isFiltering}
+                  focusIds={focusIds}
                 />
               ))}
             </div>
@@ -419,6 +450,14 @@ export default function Dashboard() {
       {/* ── AI Priority Panel ── */}
       {aiPanelOpen && (
         <AIPriorityPanel onClose={() => setAiPanelOpen(false)} />
+      )}
+
+      {/* ── Focus Mode overlay ── */}
+      {focusModeOpen && (
+        <FocusMode
+          onClose={() => setFocusModeOpen(false)}
+          onStartFocus={(ids) => setFocusIds(new Set(ids))}
+        />
       )}
     </div>
   );
