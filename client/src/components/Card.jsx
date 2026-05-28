@@ -372,7 +372,8 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
                       setLabelsVal(card.labels ?? []);
                     }
                   }}
-                  className="w-full text-xs text-gray-800 dark:text-gray-100 bg-white dark:bg-[#13151F] border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-full text-xs focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  style={{ background: '#252540', color: 'rgba(255,255,255,0.85)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '0.5rem', padding: '4px 8px' }}
                 />
               </div>
             )}

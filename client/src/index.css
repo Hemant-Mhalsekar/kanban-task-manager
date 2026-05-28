@@ -24,14 +24,48 @@
   background-color: rgba(156, 163, 175, 0.4);
 }
 
-/* ── Kanban column dark mode (frosted glass override) ──────────── */
-.dark .kanban-column {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+/* ── Global dark selects & date inputs ──────────────────────────
+   color-scheme:dark forces the OS native <option> list to render
+   with a dark background in Chrome/Edge/Safari.                  */
+select,
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark;
+  background-color: #252540;
+  color: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 0.5rem;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
-/* ── Card dark mode gradient ────────────────────────────────────── */
-.dark .kanban-card {
-  background: linear-gradient(160deg, #1E2130 0%, #1a1c2e 100%) !important;
+select:focus,
+input[type="date"]:focus,
+input[type="datetime-local"]:focus {
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+/* Native option elements inherit dark bg from color-scheme */
+option {
+  background-color: #252540;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+option:checked,
+option:hover {
+  background-color: #4F46E5;
+  color: #fff;
+}
+
+/* Date picker calendar icon colour */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(3) hue-rotate(210deg);
+  cursor: pointer;
+  opacity: 0.7;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
 }
