@@ -23,3 +23,15 @@
 .column-scroll:hover::-webkit-scrollbar-thumb {
   background-color: rgba(156, 163, 175, 0.4);
 }
+
+/* ── Kanban column dark mode (frosted glass override) ──────────── */
+.dark .kanban-column {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* ── Card dark mode gradient ────────────────────────────────────── */
+.dark .kanban-card {
+  background: linear-gradient(160deg, #1E2130 0%, #1a1c2e 100%) !important;
+}

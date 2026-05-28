@@ -163,17 +163,20 @@ export default function Card({ card, index, onDelete, onUpdate, isFocused }) {
             onMouseLeave={() => setHovered(false)}
             style={{
               ...provided.draggableProps.style,
-              borderLeft: `3px solid ${priorityBorder}`,
+              borderLeft: `4px solid ${priorityBorder}`,
+              background: snapshot.isDragging
+                ? undefined
+                : 'linear-gradient(160deg, #ffffff 0%, #fafafe 100%)',
               ...(isFocused && !snapshot.isDragging ? {
                 boxShadow: '0 0 0 2px #6366f1, 0 0 20px 4px rgba(99,102,241,0.35)',
               } : {}),
             }}
-            className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-150
-              bg-white dark:bg-[#1E2130]
+            className={`relative rounded-xl px-3.5 py-3 select-none transition-all duration-200
+              dark:bg-gradient-to-br dark:from-[#1E2130] dark:to-[#1a1c2e]
               border border-gray-200/70 dark:border-white/5
               ${snapshot.isDragging
                 ? 'shadow-xl rotate-1 scale-[1.03] border-indigo-300 dark:border-indigo-500/50'
-                : 'shadow-sm hover:shadow-md'
+                : 'shadow-sm hover:shadow-md hover:scale-[1.01]'
               }`}
           >
             {/* Focus badge */}
