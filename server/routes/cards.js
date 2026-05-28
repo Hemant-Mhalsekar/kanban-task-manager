@@ -119,4 +119,66 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// ─── POST /api/cards/:id/subtasks ─────────────────────────────────────────────
+// Adds a new subtask to a card.
+router.post('/:id/subtasks', async (req, res) => {
+  try {
+    const card = await Card.findOne({ _id: req.params.id, user: req.user.id });
+    if (!card) return res.status(404).json({ message: 'Card not found or not authorized' });
+
+    const { title } = req.body;
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ message: 'Subtask title is required' });
+    }
+
+    card.subtasks.push({ title: String(title).trim() });
+    const updated = await card.save();
+    res.json(updated);
+    req.app.get('io')?.emit('card:updated', updated);
+  } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid card ID' });
+    res.status(500).json({ message: 'Failed to add subtask' });
+  }
+});
+
+// ─── PATCH /api/cards/:id/subtasks/:subtaskId ─────────────────────────────────
+// Toggles a subtask's completed status.
+router.patch('/:id/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const card = await Card.findOne({ _id: req.params.id, user: req.user.id });
+    if (!card) return res.status(404).json({ message: 'Card not found or not authorized' });
+
+    const subtask = card.subtasks.id(req.params.subtaskId);
+    if (!subtask) return res.status(404).json({ message: 'Subtask not found' });
+
+    subtask.completed = !subtask.completed;
+    const updated = await card.save();
+    res.json(updated);
+    req.app.get('io')?.emit('card:updated', updated);
+  } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid ID' });
+    res.status(500).json({ message: 'Failed to toggle subtask' });
+  }
+});
+
+// ─── DELETE /api/cards/:id/subtasks/:subtaskId ────────────────────────────────
+// Removes a subtask from a card.
+router.delete('/:id/subtasks/:subtaskId', async (req, res) => {
+  try {
+    const card = await Card.findOne({ _id: req.params.id, user: req.user.id });
+    if (!card) return res.status(404).json({ message: 'Card not found or not authorized' });
+
+    const subtask = card.subtasks.id(req.params.subtaskId);
+    if (!subtask) return res.status(404).json({ message: 'Subtask not found' });
+
+    subtask.deleteOne();
+    const updated = await card.save();
+    res.json(updated);
+    req.app.get('io')?.emit('card:updated', updated);
+  } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid ID' });
+    res.status(500).json({ message: 'Failed to delete subtask' });
+  }
+});
+
 module.exports = router;
