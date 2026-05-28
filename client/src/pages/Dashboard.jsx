@@ -22,7 +22,8 @@ export default function Dashboard() {
   const [isDark, setIsDark] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [focusModeOpen, setFocusModeOpen] = useState(false);
-  const [focusIds, setFocusIds]           = useState(new Set()); // IDs of focused cards
+  const [focusIds, setFocusIds]     = useState(new Set()); // card IDs highlighted on board
+  const [focusActive, setFocusActive] = useState(false);  // true only while timer is running/paused
 
   // ── Search & filter ─────────────────────────────────────────
   const [search, setSearch]               = useState('');
@@ -262,17 +263,23 @@ export default function Dashboard() {
             id="focus-mode-btn"
             onClick={() => setFocusModeOpen(true)}
             aria-label="Open daily focus mode"
-            className={`flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
+            className={`relative flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg
                        transition-all duration-150
                        ${
-                         focusIds.size > 0
+                         focusActive
                            ? 'bg-violet-600 hover:bg-violet-700 text-white shadow-sm shadow-violet-500/30'
                            : 'border border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-300 hover:border-violet-300 dark:hover:border-violet-500/40 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10'
                        }`}
           >
+            {focusActive && (
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+            )}
             <Target className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">
-              {focusIds.size > 0 ? 'In Focus' : 'Focus Mode'}
+              {focusActive ? 'In Focus' : 'Focus Mode'}
             </span>
           </button>
 
@@ -456,7 +463,14 @@ export default function Dashboard() {
       {focusModeOpen && (
         <FocusMode
           onClose={() => setFocusModeOpen(false)}
-          onStartFocus={(ids) => setFocusIds(new Set(ids))}
+          onStartFocus={(ids) => {
+            setFocusIds(new Set(ids));
+            setFocusActive(true);
+          }}
+          onSessionEnd={() => {
+            setFocusIds(new Set());
+            setFocusActive(false);
+          }}
           allCards={cards}
         />
       )}
