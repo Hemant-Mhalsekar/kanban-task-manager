@@ -47,7 +47,7 @@ router.get('/', async (req, res) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const tasksCompletedThisWeek = cards.filter((c) =>
-      c.completedAt && new Date(c.completedAt) >= sevenDaysAgo
+      c.column === 'done' && c.completedAt && new Date(c.completedAt) >= sevenDaysAgo
     ).length;
 
     res.json({

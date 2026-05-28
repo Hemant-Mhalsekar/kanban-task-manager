@@ -5,13 +5,12 @@ import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Zap, LayoutDashboard, BarChart2, Sun, Moon, LogOut } from 'lucide-react';
+import { Zap, LayoutDashboard, BarChart2, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAnalytics } from '../api/analytics';
 
 // ── Colour palettes ──────────────────────────────────────────────
-const COMPLETION_COLORS = ['#6366F1', '#E5E7EB'];       // completed / pending (light)
-const COMPLETION_COLORS_DARK = ['#818CF8', '#374151'];  // completed / pending (dark)
+const COMPLETION_COLORS = ['#818CF8', '#1e1e40'];  // completed / pending (always dark)
 
 const PRIORITY_COLORS = {
   low:    '#22C55E',
@@ -25,24 +24,31 @@ const COLUMN_COLORS = {
   done:       '#10B981',
 };
 
-// ── Stat card ────────────────────────────────────────────────────
+// ── Stat card — always dark ──────────────────────────────────────
 function StatCard({ label, value, sub, accent }) {
   return (
     <div
-      className="bg-white dark:bg-[#13151F] rounded-xl border border-gray-200/70 dark:border-white/5 shadow-sm px-5 py-4 flex flex-col gap-1"
-      style={{ borderLeft: `3px solid ${accent}` }}
+      className="rounded-xl px-5 py-4 flex flex-col gap-1"
+      style={{
+        background: '#252540',
+        borderLeft: `3px solid ${accent}`,
+        border: '1px solid rgba(99,102,241,0.15)',
+        borderLeft: `3px solid ${accent}`,
+      }}
     >
-      <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-400 dark:text-gray-600">{sub}</p>}
+      <p className="text-xs font-semibold uppercase tracking-wider"
+         style={{ color: 'rgba(255,255,255,0.4)' }}>{label}</p>
+      <p className="text-3xl font-bold text-white">{value}</p>
+      {sub && <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{sub}</p>}
     </div>
   );
 }
 
-// ── Skeleton block ───────────────────────────────────────────────
+// ── Skeleton ─────────────────────────────────────────────────────
 function Skeleton({ className = '' }) {
   return (
-    <div className={`animate-pulse rounded-xl bg-gray-200 dark:bg-white/5 ${className}`} />
+    <div className={`animate-pulse rounded-xl ${className}`}
+         style={{ background: 'rgba(255,255,255,0.05)' }} />
   );
 }
 
@@ -50,11 +56,12 @@ function Skeleton({ className = '' }) {
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white dark:bg-[#1A1D2E] border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 shadow-lg text-xs">
-      {label && <p className="font-semibold text-gray-700 dark:text-gray-200 mb-1">{label}</p>}
+    <div className="rounded-lg px-3 py-2 shadow-lg text-xs"
+         style={{ background: '#1A1A2E', border: '1px solid rgba(99,102,241,0.25)' }}>
+      {label && <p className="font-semibold mb-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{label}</p>}
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.fill || p.color }} className="font-medium">
-          {p.name}: <span className="text-gray-900 dark:text-white">{p.value}</span>
+          {p.name}: <span style={{ color: 'white' }}>{p.value}</span>
         </p>
       ))}
     </div>
@@ -67,17 +74,11 @@ export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isDark, setIsDark] = useState(
-    document.documentElement.classList.contains('dark')
-  );
 
-  const toggleDark = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      document.documentElement.classList.toggle('dark', next);
-      return next;
-    });
-  };
+  // Always-dark: ensure dark class is set
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -109,47 +110,63 @@ export default function Analytics() {
 
   const columnData = data
     ? [
-        { name: 'To Do',       value: data.tasksByColumn.todo,       fill: COLUMN_COLORS.todo       },
-        { name: 'In Progress', value: data.tasksByColumn.inprogress,  fill: COLUMN_COLORS.inprogress },
-        { name: 'Done',        value: data.tasksByColumn.done,        fill: COLUMN_COLORS.done       },
+        { name: 'To Do',       value: data.tasksByColumn.todo,      fill: COLUMN_COLORS.todo       },
+        { name: 'In Progress', value: data.tasksByColumn.inprogress, fill: COLUMN_COLORS.inprogress },
+        { name: 'Done',        value: data.tasksByColumn.done,       fill: COLUMN_COLORS.done       },
       ]
     : [];
 
-  const pieColors = isDark ? COMPLETION_COLORS_DARK : COMPLETION_COLORS;
+  const axisStyle = { fill: 'rgba(255,255,255,0.4)', fontSize: 11 };
+  const gridColor = 'rgba(255,255,255,0.08)';
+  const isEmpty   = data?.totalTasks === 0;
 
-  const axisStyle  = { fill: isDark ? '#6B7280' : '#9CA3AF', fontSize: 11 };
-  const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-
-  const isEmpty = data?.totalTasks === 0;
+  // Chart card style
+  const chartCard = {
+    background: '#16162A',
+    border: '1px solid rgba(99,102,241,0.15)',
+    borderRadius: '0.75rem',
+    padding: '1.25rem',
+  };
 
   return (
     <div
-      className="min-h-screen flex flex-col transition-colors duration-200"
-      style={{ backgroundColor: isDark ? '#0F1117' : '#F4F5F7' }}
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: '#0D0D1F' }}
     >
       {/* ── Header ── */}
-      <header className="bg-white dark:bg-[#13151F] border-b border-gray-200/80 dark:border-white/5 px-6 h-14 flex items-center justify-between flex-shrink-0 transition-colors duration-200">
+      <header
+        className="sticky top-0 z-30 px-6 h-14 flex items-center justify-between flex-shrink-0"
+        style={{
+          background: '#13132A',
+          borderBottom: '1px solid rgba(99,102,241,0.3)',
+          boxShadow: '0 1px 20px rgba(99,102,241,0.1)',
+        }}
+      >
         <div className="flex items-center gap-5">
           {/* Logo */}
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
               <Zap className="w-4 h-4 text-white fill-white" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight">TaskPilot</span>
+            <span className="font-bold text-white text-[15px] tracking-tight">TaskPilot</span>
           </div>
 
           {/* Nav links */}
           <nav className="hidden sm:flex items-center gap-1">
             <Link
               to="/dashboard"
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/8 transition-colors"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: 'rgba(255,255,255,0.55)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'transparent'; }}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               Board
             </Link>
             <Link
               to="/analytics"
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-900 dark:text-white bg-gray-100 dark:bg-white/8 font-medium transition-colors"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
+              style={{ color: 'white', background: 'rgba(99,102,241,0.2)' }}
             >
               <BarChart2 className="w-3.5 h-3.5" />
               Analytics
@@ -159,19 +176,15 @@ export default function Analytics() {
 
         {/* Right controls */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block mr-1">
+          <span className="text-sm hidden sm:block mr-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
             {user?.name || user?.email}
           </span>
           <button
-            onClick={toggleDark}
-            aria-label="Toggle dark mode"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/8 transition-colors"
-          >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
             onClick={handleLogout}
-            className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
           >
             Sign out
           </button>
@@ -180,13 +193,14 @@ export default function Analytics() {
 
       {/* ── Main ── */}
       <main className="flex-1 px-6 py-6 max-w-7xl mx-auto w-full">
-        <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight mb-5">
+        <h1 className="text-lg font-bold text-white tracking-tight mb-5">
           Productivity Analytics
         </h1>
 
         {/* Error */}
         {error && (
-          <div className="mb-5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 px-4 py-3 text-sm text-red-700 dark:text-red-400">
+          <div className="mb-5 rounded-xl px-4 py-3 text-sm"
+               style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}>
             {error}
           </div>
         )}
@@ -194,8 +208,8 @@ export default function Analytics() {
         {/* ── Loading state ── */}
         {loading && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24" />)}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Skeleton className="h-64" />
@@ -208,11 +222,12 @@ export default function Analytics() {
         {/* ── Empty state ── */}
         {!loading && !error && isEmpty && (
           <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center mb-4">
-              <BarChart2 className="w-8 h-8 text-indigo-500 dark:text-indigo-400" />
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                 style={{ background: 'rgba(99,102,241,0.15)' }}>
+              <BarChart2 className="w-8 h-8 text-indigo-400" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">No data yet</h2>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mb-5">
+            <h2 className="text-lg font-semibold text-white mb-1">No data yet</h2>
+            <p className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.4)' }}>
               Create some tasks on your board to see analytics here.
             </p>
             <Link
@@ -228,8 +243,8 @@ export default function Analytics() {
         {!loading && !error && !isEmpty && data && (
           <div className="space-y-4">
 
-            {/* Row 1 — 4 stat cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {/* Row 1 — 5 stat cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
               <StatCard
                 label="Total Tasks"
                 value={data.totalTasks}
@@ -251,8 +266,14 @@ export default function Analytics() {
               <StatCard
                 label="Overdue"
                 value={data.overdueTasks}
-                sub={`${data.tasksCompletedThisWeek} done this week`}
+                sub="past deadline"
                 accent="#EF4444"
+              />
+              <StatCard
+                label="Done This Week"
+                value={data.tasksCompletedThisWeek}
+                sub="last 7 days"
+                accent="#6366F1"
               />
             </div>
 
@@ -260,8 +281,8 @@ export default function Analytics() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
               {/* Completion pie chart */}
-              <div className="bg-white dark:bg-[#13151F] rounded-xl border border-gray-200/70 dark:border-white/5 shadow-sm p-5">
-                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <div style={chartCard}>
+                <h2 className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   Completion Rate
                 </h2>
                 <ResponsiveContainer width="100%" height={220}>
@@ -277,26 +298,25 @@ export default function Analytics() {
                       strokeWidth={0}
                     >
                       {pieData.map((_, i) => (
-                        <Cell key={i} fill={pieColors[i]} />
+                        <Cell key={i} fill={COMPLETION_COLORS[i]} />
                       ))}
                     </Pie>
                     <Tooltip content={<ChartTooltip />} />
                     <Legend
                       formatter={(val) => (
-                        <span className="text-xs text-gray-600 dark:text-gray-400">{val}</span>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>{val}</span>
                       )}
                     />
                     {/* Centre label */}
                     <text
                       x="50%" y="44%" textAnchor="middle" dominantBaseline="middle"
-                      className="fill-gray-900 dark:fill-white"
-                      style={{ fontSize: 26, fontWeight: 700, fill: isDark ? '#fff' : '#111827' }}
+                      style={{ fontSize: 26, fontWeight: 700, fill: '#fff' }}
                     >
                       {data.completionRate}%
                     </text>
                     <text
                       x="50%" y="55%" textAnchor="middle" dominantBaseline="middle"
-                      style={{ fontSize: 11, fill: isDark ? '#6B7280' : '#9CA3AF' }}
+                      style={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }}
                     >
                       complete
                     </text>
@@ -305,8 +325,8 @@ export default function Analytics() {
               </div>
 
               {/* Priority bar chart */}
-              <div className="bg-white dark:bg-[#13151F] rounded-xl border border-gray-200/70 dark:border-white/5 shadow-sm p-5">
-                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+              <div style={chartCard}>
+                <h2 className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   Tasks by Priority
                 </h2>
                 <ResponsiveContainer width="100%" height={220}>
@@ -314,7 +334,7 @@ export default function Analytics() {
                     <CartesianGrid vertical={false} stroke={gridColor} />
                     <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} />
                     <YAxis allowDecimals={false} tick={axisStyle} axisLine={false} tickLine={false} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                     <Bar dataKey="value" name="Tasks" radius={[6, 6, 0, 0]}>
                       {priorityData.map((entry, i) => (
                         <Cell key={i} fill={entry.fill} />
@@ -326,8 +346,8 @@ export default function Analytics() {
             </div>
 
             {/* Row 3 — Tasks by column (wide) */}
-            <div className="bg-white dark:bg-[#13151F] rounded-xl border border-gray-200/70 dark:border-white/5 shadow-sm p-5">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+            <div style={chartCard}>
+              <h2 className="text-sm font-semibold mb-4" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 Tasks by Column
               </h2>
               <ResponsiveContainer width="100%" height={200}>
@@ -335,7 +355,7 @@ export default function Analytics() {
                   <CartesianGrid vertical={false} stroke={gridColor} />
                   <XAxis dataKey="name" tick={axisStyle} axisLine={false} tickLine={false} />
                   <YAxis allowDecimals={false} tick={axisStyle} axisLine={false} tickLine={false} />
-                  <Tooltip content={<ChartTooltip />} cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' }} />
+                  <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
                   <Bar dataKey="value" name="Tasks" radius={[6, 6, 0, 0]}>
                     {columnData.map((entry, i) => (
                       <Cell key={i} fill={entry.fill} />
