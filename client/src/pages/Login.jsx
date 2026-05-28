@@ -8,7 +8,7 @@ function BrandPanel() {
   return (
     <div
       className="hidden lg:flex lg:w-3/5 relative flex-col justify-between p-12 overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)' }}
+      style={{ background: 'linear-gradient(160deg, #0F0F1A 0%, #1A1A2E 60%, #1e1040 100%)' }}
     >
       {/* Decorative orb */}
       <div

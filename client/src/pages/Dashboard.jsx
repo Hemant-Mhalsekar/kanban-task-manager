@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { DragDropContext } from '@hello-pangea/dnd';
-import { Zap, Sun, Moon, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2, Sparkles, Target } from 'lucide-react';
+import { Zap, Search, Tag, X, ChevronDown, LayoutDashboard, BarChart2, Sparkles, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getCards, createCard, deleteCard, updateCard } from '../api/cards';
 import Column from '../components/Column';
@@ -19,11 +19,15 @@ export default function Dashboard() {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isDark, setIsDark] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [focusModeOpen, setFocusModeOpen] = useState(false);
-  const [focusIds, setFocusIds]     = useState(new Set()); // card IDs highlighted on board
-  const [focusActive, setFocusActive] = useState(false);  // true only while timer is running/paused
+  const [focusIds, setFocusIds]     = useState(new Set());
+  const [focusActive, setFocusActive] = useState(false);
+
+  // Always-dark: apply dark class once on mount
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+  }, []);
 
   // ── Search & filter ─────────────────────────────────────────
   const [search, setSearch]               = useState('');
@@ -43,13 +47,6 @@ export default function Dashboard() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const toggleDark = () => {
-    setIsDark((prev) => {
-      const next = !prev;
-      document.documentElement.classList.toggle('dark', next);
-      return next;
-    });
-  };
 
   // ── Fetch cards on mount — sorted by column+order so positions persist ──
   useEffect(() => {
@@ -216,13 +213,13 @@ export default function Dashboard() {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
 
-  const dotColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+  const dotColor = 'rgba(255,255,255,0.04)';
 
   return (
     <div
-      className="min-h-screen flex flex-col transition-colors duration-200"
+      className="min-h-screen flex flex-col"
       style={{
-        backgroundColor: isDark ? '#0F1117' : '#F4F5F7',
+        backgroundColor: '#0F0F1A',
         backgroundImage: `radial-gradient(${dotColor} 1px, transparent 1px)`,
         backgroundSize: '20px 20px',
       }}
@@ -230,17 +227,11 @@ export default function Dashboard() {
 
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-30 px-6 h-14 flex items-center justify-between flex-shrink-0 transition-colors duration-200"
+        className="sticky top-0 z-30 px-6 h-14 flex items-center justify-between flex-shrink-0"
         style={{
-          background: isDark ? 'rgba(26,26,46,0.88)' : 'rgba(255,255,255,0.88)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: isDark
-            ? '1px solid rgba(255,255,255,0.06)'
-            : '1px solid rgba(0,0,0,0.08)',
-          boxShadow: isDark
-            ? '0 1px 0 0 rgba(255,255,255,0.03)'
-            : '0 1px 0 0 rgba(0,0,0,0.04)',
+          background: '#1A1A2E',
+          borderBottom: '1px solid rgba(99,102,241,0.3)',
+          boxShadow: '0 1px 20px rgba(99,102,241,0.08)',
         }}
       >
         {/* Logo */}
@@ -249,7 +240,7 @@ export default function Dashboard() {
             <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
               <Zap className="w-4 h-4 text-white fill-white" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white text-[15px] tracking-tight">
+            <span className="font-bold text-white text-[15px] tracking-tight">
               TaskPilot
             </span>
           </div>
@@ -258,14 +249,18 @@ export default function Dashboard() {
           <nav className="hidden sm:flex items-center gap-1">
             <Link
               to="/dashboard"
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-900 dark:text-white bg-gray-100 dark:bg-white/8 font-medium transition-colors"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg font-medium transition-colors"
+              style={{ color: 'white', background: 'rgba(99,102,241,0.2)' }}
             >
               <LayoutDashboard className="w-3.5 h-3.5" />
               Board
             </Link>
             <Link
               to="/analytics"
-              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/8 transition-colors"
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors"
+              style={{ color: 'rgba(255,255,255,0.55)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.background = 'transparent'; }}
             >
               <BarChart2 className="w-3.5 h-3.5" />
               Analytics
@@ -275,7 +270,7 @@ export default function Dashboard() {
 
         {/* Right side controls */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block mr-1">
+          <span className="text-sm hidden sm:block mr-1" style={{ color: 'rgba(255,255,255,0.5)' }}>
             {user?.name || user?.email}
           </span>
 
@@ -307,22 +302,22 @@ export default function Dashboard() {
               color: 'white',
               boxShadow: '0 2px 8px rgba(124,58,237,0.4)',
             } : {
-              border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e5e7eb',
-              color: isDark ? '#d1d5db' : '#4b5563',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'rgba(255,255,255,0.65)',
               background: 'transparent',
             }}
             onMouseEnter={(e) => {
               if (!focusActive) {
-                e.currentTarget.style.background = isDark ? 'rgba(124,58,237,0.12)' : 'rgba(124,58,237,0.06)';
+                e.currentTarget.style.background = 'rgba(124,58,237,0.15)';
                 e.currentTarget.style.borderColor = '#7C3AED';
-                e.currentTarget.style.color = '#7C3AED';
+                e.currentTarget.style.color = '#a78bfa';
               }
             }}
             onMouseLeave={(e) => {
               if (!focusActive) {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.1)' : '#e5e7eb';
-                e.currentTarget.style.color = isDark ? '#d1d5db' : '#4b5563';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)';
+                e.currentTarget.style.color = 'rgba(255,255,255,0.65)';
               }
             }}
           >
@@ -338,22 +333,13 @@ export default function Dashboard() {
             </span>
           </button>
 
-          {/* Dark mode toggle */}
-          <button
-            onClick={toggleDark}
-            aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/8 transition-colors"
-          >
-            {isDark
-              ? <Sun className="w-4 h-4" />
-              : <Moon className="w-4 h-4" />
-            }
-          </button>
-
           {/* Sign out */}
           <button
             onClick={handleLogout}
-            className="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors"
+            className="text-sm font-medium px-3 py-1.5 rounded-lg transition-colors"
+            style={{ color: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.1)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.55)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
           >
             Sign out
           </button>
@@ -366,11 +352,12 @@ export default function Dashboard() {
         {/* ── Toolbar row ── */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
           <div className="flex-shrink-0">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+            <h1 className="text-lg font-bold text-white tracking-tight leading-tight">
               My Board
             </h1>
-            <p className="text-[11px] text-gray-400 dark:text-gray-600 mt-0.5">
-              {todayLabel} &nbsp;·&nbsp; <span className="text-gray-500 dark:text-gray-500">{motivation}</span>
+            <p className="text-[11px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {todayLabel} &nbsp;·&nbsp;
+              <span style={{ color: 'rgba(255,255,255,0.5)' }}>{motivation}</span>
             </p>
           </div>
 
@@ -378,7 +365,14 @@ export default function Dashboard() {
           <div className="flex flex-1 items-center gap-2 sm:justify-end flex-wrap">
 
             {/* Grouped search + priority + labels container */}
-            <div className="flex items-center rounded-lg border border-gray-200 dark:border-white/8 bg-white dark:bg-[#13151F] overflow-hidden shadow-sm divide-x divide-gray-200 dark:divide-white/8 h-8">
+            <div
+              className="flex items-center rounded-lg overflow-hidden shadow-sm divide-x h-8"
+              style={{
+                background: '#16162A',
+                border: '1px solid rgba(99,102,241,0.2)',
+                divideColor: 'rgba(99,102,241,0.15)',
+              }}
+            >
 
               {/* Search */}
               <div className="relative flex items-center">
@@ -389,7 +383,9 @@ export default function Dashboard() {
                   placeholder="Search…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 w-40 pl-8 pr-3 text-sm bg-transparent text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-600 focus:outline-none focus:w-52 transition-all duration-200"
+                  className="h-8 w-40 pl-8 pr-3 text-sm bg-transparent focus:outline-none focus:w-52 transition-all duration-200"
+                  style={{ color: 'rgba(255,255,255,0.8)', caretColor: '#6366f1' }}
+                  placeholder-style={{ color: 'rgba(255,255,255,0.3)' }}
                 />
               </div>
 
@@ -398,7 +394,8 @@ export default function Dashboard() {
                 id="board-priority-filter"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="h-8 text-sm bg-transparent text-gray-700 dark:text-gray-300 px-3 focus:outline-none cursor-pointer appearance-none"
+                className="h-8 text-sm bg-transparent px-3 focus:outline-none cursor-pointer appearance-none"
+                style={{ color: 'rgba(255,255,255,0.65)' }}
               >
                 <option value="all">All priorities</option>
                 <option value="low">Low</option>
@@ -413,9 +410,10 @@ export default function Dashboard() {
                   onClick={() => setLabelDropOpen((o) => !o)}
                   className={`h-8 flex items-center gap-1.5 px-3 text-sm transition-colors ${
                     activeLabelFilters.size > 0
-                      ? 'text-indigo-600 dark:text-indigo-400'
-                      : 'text-gray-700 dark:text-gray-300'
+                      ? 'text-indigo-400'
+                      : ''
                   }`}
+                  style={activeLabelFilters.size === 0 ? { color: 'rgba(255,255,255,0.65)' } : {}}
                 >
                   <Tag className="w-3.5 h-3.5" />
                   Labels
@@ -428,7 +426,10 @@ export default function Dashboard() {
                 </button>
 
                 {labelDropOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 z-20 w-44 bg-white dark:bg-[#1A1D2E] border border-gray-200 dark:border-white/8 rounded-xl shadow-xl py-1.5">
+                  <div
+                    className="absolute right-0 top-full mt-1.5 z-20 w-44 rounded-xl shadow-xl py-1.5"
+                    style={{ background: '#1A1A2E', border: '1px solid rgba(99,102,241,0.2)' }}
+                  >
                     {ALL_LABELS.map((label) => {
                       const isActive = activeLabelFilters.has(label);
                       const styles   = LABEL_STYLES[label];
@@ -470,7 +471,10 @@ export default function Dashboard() {
               <button
                 onClick={() => { setSearch(''); setPriority('all'); setActiveLabelFilters(new Set()); }}
                 title="Clear filters"
-                className="h-8 flex items-center gap-1.5 text-xs font-medium px-3 rounded-lg border border-gray-200 dark:border-white/8 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:border-red-200 dark:hover:border-red-800 bg-white dark:bg-[#13151F] transition-colors shadow-sm"
+                className="h-8 flex items-center gap-1.5 text-xs font-medium px-3 rounded-lg transition-colors shadow-sm"
+                style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(99,102,241,0.2)', background: '#16162A' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.5)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.2)'; }}
               >
                 <X className="w-3.5 h-3.5" />
                 Clear
@@ -492,7 +496,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {COLUMNS.map((col) => (
               <div key={col} className="h-48 rounded-2xl animate-pulse"
-                style={{ background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.7)' }} />
+                style={{ background: 'rgba(255,255,255,0.04)' }} />
             ))}
           </div>
         ) : (
