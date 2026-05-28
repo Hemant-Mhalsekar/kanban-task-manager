@@ -219,7 +219,7 @@ export default function Dashboard() {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        backgroundColor: '#0F0F1A',
+        backgroundColor: '#0D0D1F',
         backgroundImage: `radial-gradient(${dotColor} 1px, transparent 1px)`,
         backgroundSize: '20px 20px',
       }}
@@ -229,9 +229,9 @@ export default function Dashboard() {
       <header
         className="sticky top-0 z-30 px-6 h-14 flex items-center justify-between flex-shrink-0"
         style={{
-          background: '#1A1A2E',
+          background: '#13132A',
           borderBottom: '1px solid rgba(99,102,241,0.3)',
-          boxShadow: '0 1px 20px rgba(99,102,241,0.08)',
+          boxShadow: '0 1px 20px rgba(99,102,241,0.1)',
         }}
       >
         {/* Logo */}
@@ -368,9 +368,8 @@ export default function Dashboard() {
             <div
               className="flex items-center rounded-lg overflow-hidden shadow-sm divide-x h-8"
               style={{
-                background: '#16162A',
+                background: '#1E1E35',
                 border: '1px solid rgba(99,102,241,0.2)',
-                divideColor: 'rgba(99,102,241,0.15)',
               }}
             >
 

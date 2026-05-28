@@ -35,13 +35,10 @@ export default function Column({ columnId, cards, onAddCard, onDeleteCard, onUpd
     <div
       className="kanban-column flex flex-col w-full min-w-0 rounded-2xl overflow-hidden transition-all duration-200"
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: '#16162A',
         border: `1px solid rgba(99,102,241,0.18)`,
-        boxShadow: `0 4px 24px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.1)`,
         borderTop: `3px solid ${config.accent}`,
-        boxShadow: `0 4px 24px rgba(0,0,0,0.3), 0 -1px 0 0 ${config.accent}40`,
+        boxShadow: `0 4px 24px rgba(0,0,0,0.3), 0 -2px 8px ${config.accent}4d`,
       }}
     >
       {/* Column header */}
