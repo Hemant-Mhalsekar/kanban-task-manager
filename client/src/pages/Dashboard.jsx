@@ -457,6 +457,7 @@ export default function Dashboard() {
         <FocusMode
           onClose={() => setFocusModeOpen(false)}
           onStartFocus={(ids) => setFocusIds(new Set(ids))}
+          allCards={cards}
         />
       )}
     </div>
