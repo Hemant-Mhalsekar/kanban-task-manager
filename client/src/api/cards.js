@@ -21,3 +21,6 @@ export const toggleSubtask = (cardId, subtaskId) =>
 
 export const deleteSubtask = (cardId, subtaskId) =>
   apiClient.delete(`/cards/${cardId}/subtasks/${subtaskId}`).then((res) => res.data);
+
+export const suggestSubtasks = (title, description) =>
+  apiClient.post('/ai/subtasks', { title, description }).then((res) => res.data);

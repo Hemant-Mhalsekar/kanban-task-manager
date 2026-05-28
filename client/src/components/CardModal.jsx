@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Plus, Trash2, CheckSquare, Square, Calendar, Tag, Flag } from 'lucide-react';
-import { addSubtask, toggleSubtask, deleteSubtask } from '../api/cards';
+import { X, Plus, Trash2, CheckSquare, Square, Calendar, Tag, Flag, Sparkles, Loader2, CheckCheck } from 'lucide-react';
+import { addSubtask, toggleSubtask, deleteSubtask, suggestSubtasks } from '../api/cards';
 import { ALL_LABELS, LABEL_STYLES } from '../constants/labels';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,12 +43,18 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
   const [descVal, setDescVal]         = useState(initialCard.description ?? '');
   const [subtaskInput, setSubtaskInput] = useState('');
   const [addingSubtask, setAddingSubtask] = useState(false);
-  const [savingField, setSavingField] = useState(null); // 'title' | 'desc' | null
+  const [savingField, setSavingField] = useState(null);
 
-  const titleRef    = useRef(null);
-  const descRef     = useRef(null);
-  const inputRef    = useRef(null);
-  const overlayRef  = useRef(null);
+  // ── AI suggestions state ──────────────────────────────────────
+  const [aiStatus, setAiStatus]         = useState('idle'); // idle | loading | done | error
+  const [aiSuggestions, setAiSuggestions] = useState([]);   // [{ title, added }]
+  const [aiError, setAiError]           = useState('');
+  const [addingAll, setAddingAll]       = useState(false);
+
+  const titleRef   = useRef(null);
+  const descRef    = useRef(null);
+  const inputRef   = useRef(null);
+  const overlayRef = useRef(null);
 
   // Sync card if parent updates it (e.g. via socket)
   useEffect(() => { setCard(initialCard); }, [initialCard]);
@@ -88,22 +94,24 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
     } finally { setSavingField(null); }
   }, [descVal, card, onUpdate]);
 
-  // ── Subtask handlers ────────────────────────────────────────────
-  const handleAddSubtask = useCallback(async () => {
-    const title = subtaskInput.trim();
+  // ── Subtask CRUD handlers ───────────────────────────────────────
+  const handleAddSubtask = useCallback(async (titleOverride) => {
+    const title = (titleOverride ?? subtaskInput).trim();
     if (!title) return;
-    setAddingSubtask(true);
+    if (!titleOverride) setAddingSubtask(true);
     try {
       const updated = await addSubtask(card._id, title);
       setCard(updated);
-      onUpdate(card._id, null, updated); // sync parent state
-      setSubtaskInput('');
-    } catch { /* silent — server errors show in console */ }
-    finally { setAddingSubtask(false); inputRef.current?.focus(); }
+      onUpdate(card._id, null, updated);
+      if (!titleOverride) {
+        setSubtaskInput('');
+        inputRef.current?.focus();
+      }
+    } catch { /* silent */ }
+    finally { if (!titleOverride) setAddingSubtask(false); }
   }, [card._id, subtaskInput, onUpdate]);
 
   const handleToggle = useCallback(async (subtaskId) => {
-    // Optimistic update
     setCard((c) => ({
       ...c,
       subtasks: c.subtasks.map((s) =>
@@ -115,7 +123,6 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
       setCard(updated);
       onUpdate(card._id, null, updated);
     } catch {
-      // Revert on failure
       setCard((c) => ({
         ...c,
         subtasks: c.subtasks.map((s) =>
@@ -126,16 +133,58 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
   }, [card._id, onUpdate]);
 
   const handleDeleteSubtask = useCallback(async (subtaskId) => {
-    // Optimistic update
     setCard((c) => ({ ...c, subtasks: c.subtasks.filter((s) => String(s._id) !== String(subtaskId)) }));
     try {
       const updated = await deleteSubtask(card._id, subtaskId);
       setCard(updated);
       onUpdate(card._id, null, updated);
     } catch {
-      setCard((c) => ({ ...c })); // parent will resync via socket
+      setCard((c) => ({ ...c }));
     }
   }, [card._id, onUpdate]);
+
+  // ── AI suggestion handlers ──────────────────────────────────────
+  const handleSuggest = useCallback(async () => {
+    setAiStatus('loading');
+    setAiError('');
+    setAiSuggestions([]);
+    try {
+      const data = await suggestSubtasks(card.title, card.description);
+      setAiSuggestions(data.suggestions.map((s) => ({ ...s, added: false })));
+      setAiStatus('done');
+    } catch {
+      setAiError('AI suggestions unavailable, try again.');
+      setAiStatus('error');
+    }
+  }, [card.title, card.description]);
+
+  // Add a single AI suggestion
+  const handleAddSuggestion = useCallback(async (idx) => {
+    const suggestion = aiSuggestions[idx];
+    if (!suggestion || suggestion.added) return;
+    // Mark as added optimistically
+    setAiSuggestions((prev) => prev.map((s, i) => (i === idx ? { ...s, added: true } : s)));
+    await handleAddSubtask(suggestion.title);
+  }, [aiSuggestions, handleAddSubtask]);
+
+  // Add all remaining AI suggestions sequentially
+  const handleAddAll = useCallback(async () => {
+    setAddingAll(true);
+    const pending = aiSuggestions.filter((s) => !s.added);
+    // Mark all as added optimistically
+    setAiSuggestions((prev) => prev.map((s) => ({ ...s, added: true })));
+    for (const s of pending) {
+      await handleAddSubtask(s.title);
+    }
+    setAddingAll(false);
+    // Dismiss panel after a brief moment
+    setTimeout(() => setAiStatus('idle'), 400);
+  }, [aiSuggestions, handleAddSubtask]);
+
+  const handleDismissSuggestions = () => {
+    setAiStatus('idle');
+    setAiSuggestions([]);
+  };
 
   // ── Derived ─────────────────────────────────────────────────────
   const subtasks       = card.subtasks ?? [];
@@ -145,6 +194,7 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
   const dueStatus      = getDueStatus(card.dueDate);
   const priorityStyle  = PRIORITY_STYLES[card.priority] ?? PRIORITY_STYLES.medium;
   const borderColor    = PRIORITY_BORDER[card.priority] ?? PRIORITY_BORDER.medium;
+  const allAdded       = aiSuggestions.length > 0 && aiSuggestions.every((s) => s.added);
 
   return (
     <>
@@ -197,13 +247,11 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
 
               {/* Meta chips row */}
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                {/* Priority */}
                 <span className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${priorityStyle.badge}`}>
                   <Flag className="w-2.5 h-2.5" />
                   {card.priority.charAt(0).toUpperCase() + card.priority.slice(1)}
                 </span>
 
-                {/* Due date */}
                 {dueFmt && (
                   <span className={`flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${DUE_CHIP[dueStatus]}`}>
                     <Calendar className="w-2.5 h-2.5" />
@@ -211,7 +259,6 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                   </span>
                 )}
 
-                {/* Labels */}
                 {(card.labels ?? []).map((label) => (
                   <span key={label} className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${LABEL_STYLES[label]?.chip ?? ''}`}>
                     <Tag className="w-2.5 h-2.5" />
@@ -281,6 +328,7 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
 
             {/* ── Subtasks ── */}
             <section>
+              {/* Section header */}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                   <CheckSquare className="w-3.5 h-3.5" />
@@ -317,7 +365,111 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                 </ul>
               )}
 
-              {/* Add subtask input */}
+              {/* ── AI Suggestions panel ── */}
+              {aiStatus !== 'idle' && (
+                <div className="mb-3 rounded-xl border border-indigo-200 dark:border-indigo-500/30
+                                bg-indigo-50/60 dark:bg-indigo-500/8
+                                overflow-hidden">
+                  {/* Panel header */}
+                  <div className="flex items-center justify-between px-3.5 py-2.5
+                                  border-b border-indigo-100 dark:border-indigo-500/20">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                        AI Suggestions
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {aiStatus === 'done' && !allAdded && (
+                        <button
+                          onClick={handleAddAll}
+                          disabled={addingAll}
+                          id="ai-add-all-btn"
+                          className="flex items-center gap-1 text-xs font-semibold
+                                     text-indigo-600 dark:text-indigo-400
+                                     hover:text-indigo-800 dark:hover:text-indigo-200
+                                     disabled:opacity-50 transition-colors"
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          Add all
+                        </button>
+                      )}
+                      <button
+                        onClick={handleDismissSuggestions}
+                        aria-label="Dismiss suggestions"
+                        className="text-xs text-gray-400 dark:text-gray-500
+                                   hover:text-gray-600 dark:hover:text-gray-300
+                                   transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Loading */}
+                  {aiStatus === 'loading' && (
+                    <div className="flex items-center gap-2.5 px-3.5 py-4">
+                      <Loader2 className="w-4 h-4 text-indigo-500 animate-spin flex-shrink-0" />
+                      <span className="text-sm text-indigo-600 dark:text-indigo-400">
+                        Groq is thinking…
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {aiStatus === 'error' && (
+                    <div className="flex items-center justify-between px-3.5 py-3">
+                      <span className="text-sm text-red-500 dark:text-red-400">{aiError}</span>
+                      <button
+                        onClick={handleSuggest}
+                        className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline ml-3"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Suggestions list */}
+                  {aiStatus === 'done' && (
+                    <ul className="divide-y divide-indigo-100 dark:divide-indigo-500/15">
+                      {aiSuggestions.map((s, idx) => (
+                        <li
+                          key={idx}
+                          className="flex items-center gap-3 px-3.5 py-2.5
+                                     hover:bg-indigo-100/50 dark:hover:bg-indigo-500/10
+                                     transition-colors"
+                        >
+                          <span className={`flex-1 text-sm leading-snug transition-colors ${
+                            s.added
+                              ? 'line-through text-gray-300 dark:text-gray-600'
+                              : 'text-gray-700 dark:text-gray-200'
+                          }`}>
+                            {s.title}
+                          </span>
+                          <button
+                            onClick={() => handleAddSuggestion(idx)}
+                            disabled={s.added}
+                            aria-label={s.added ? 'Already added' : `Add: ${s.title}`}
+                            className={`flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md
+                                        transition-all duration-150 ${
+                              s.added
+                                ? 'text-emerald-500 dark:text-emerald-400 cursor-default'
+                                : 'text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-indigo-200/60 dark:hover:bg-indigo-500/20'
+                            }`}
+                          >
+                            {s.added
+                              ? <CheckCheck className="w-3.5 h-3.5" />
+                              : <Plus className="w-3.5 h-3.5" />
+                            }
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {/* Add subtask row: input + manual add + AI suggest */}
               <div className="flex items-center gap-2 mt-2">
                 <input
                   ref={inputRef}
@@ -334,8 +486,10 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                              focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400
                              disabled:opacity-50 transition-colors"
                 />
+
+                {/* Manual add button */}
                 <button
-                  onClick={handleAddSubtask}
+                  onClick={() => handleAddSubtask()}
                   disabled={addingSubtask || !subtaskInput.trim()}
                   id="add-subtask-btn"
                   aria-label="Add subtask"
@@ -346,6 +500,28 @@ export default function CardModal({ card: initialCard, onClose, onUpdate }) {
                              transition-colors"
                 >
                   <Plus className="w-4 h-4" />
+                </button>
+
+                {/* AI suggest button */}
+                <button
+                  onClick={handleSuggest}
+                  disabled={aiStatus === 'loading'}
+                  id="ai-suggest-subtasks-btn"
+                  aria-label="Suggest subtasks with AI"
+                  title="Suggest subtasks with AI"
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-xl
+                             bg-gradient-to-r from-indigo-500 to-violet-500
+                             hover:from-indigo-600 hover:to-violet-600
+                             text-white text-xs font-semibold
+                             shadow-sm hover:shadow-indigo-400/30 hover:shadow-md
+                             disabled:opacity-50 disabled:cursor-not-allowed
+                             transition-all duration-150"
+                >
+                  {aiStatus === 'loading'
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <Sparkles className="w-3.5 h-3.5" />
+                  }
+                  <span className="hidden sm:inline">Suggest</span>
                 </button>
               </div>
             </section>
