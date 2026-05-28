@@ -46,7 +46,7 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
   const [screen, setScreen] = useState('select');
   // Task selection state
   const [status, setStatus]     = useState('loading'); // loading | tooFew | error | ready
-  const [slots, setSlots]       = useState([null, null, null]); // 3 selected task objects
+  const [slots, setSlots]       = useState([null, null, null]); // up to 3 selected task objects
   const [errorMsg, setErrorMsg] = useState('');
   const [tooFewCount, setTooFewCount] = useState(0);
   const [duration, setDuration] = useState(25);         // minutes
@@ -73,8 +73,15 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
     try {
       const data = await getAIFocus();
       if (data.tooFew) {
+        // 0 incomplete tasks
         setTooFewCount(data.count ?? 0);
         setStatus('tooFew');
+      } else if (data.fewTasks) {
+        // 1-2 tasks: backend returned them all directly, no AI selection
+        const tasks = data.focus;
+        // Pad slots to 3 with nulls so the slot UI still renders
+        setSlots([...tasks, ...Array(Math.max(0, 3 - tasks.length)).fill(null)]);
+        setStatus('ready');
       } else {
         setSlots(data.focus.slice(0, 3));
         setStatus('ready');
@@ -128,14 +135,15 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
   const handleStartSession = () => {
     const mins = customMode ? (parseInt(customVal, 10) || 25) : duration;
     const secs = mins * 60;
-    setSessionTasks([...slots]);
+    const activeTasks = slots.filter(Boolean);
+    setSessionTasks(activeTasks);
     setTotalSecs(secs);
     setSecsLeft(secs);
     setRunning(true);
     setDone(false);
     setChecked({});
     setConfirmEnd(false);
-    onStartFocus(slots.map((t) => t._id));
+    onStartFocus(activeTasks.map((t) => t._id));
     setScreen('timer');
   };
 
@@ -171,7 +179,9 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
 
   // ── SELECT SCREEN ──────────────────────────────────────────────
   const activeDuration = customMode ? (parseInt(customVal, 10) || 0) : duration;
-  const canStart = status === 'ready' && slots.every(Boolean) && activeDuration > 0;
+  // canStart: all non-null slots must be filled; allow 1-3 tasks
+  const filledSlots = slots.filter(Boolean);
+  const canStart = status === 'ready' && filledSlots.length > 0 && activeDuration > 0;
 
   return (
     <div
@@ -237,7 +247,7 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
             </div>
           )}
 
-          {/* ── Too few ── */}
+          {/* ── Too few (0 tasks) ── */}
           {status === 'tooFew' && (
             <div className="flex flex-col items-center justify-center py-14 gap-4 text-center">
               <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-900/20
@@ -245,10 +255,10 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
                 <Crosshair className="w-6 h-6 text-amber-500" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Not enough tasks</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">No incomplete tasks</p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 max-w-xs">
-                  You have <strong>{tooFewCount}</strong> incomplete task{tooFewCount !== 1 ? 's' : ''}.
-                  Add at least <strong>3</strong> to use Focus Mode.
+                  All your tasks are done, or you haven't created any yet.
+                  Add tasks to your board to use Focus Mode.
                 </p>
               </div>
               <button onClick={onClose}
@@ -283,19 +293,21 @@ export default function FocusMode({ onClose, onStartFocus, onSessionEnd, allCard
                 </p>
                 <div className="space-y-2.5">
                   {slots.map((task, idx) => (
-                    <SwapSlot
-                      key={idx}
-                      idx={idx}
-                      task={task}
-                      allTasks={incompletCards}
-                      onSwap={(newTask) => {
-                        setSlots((prev) => {
-                          const next = [...prev];
-                          next[idx] = newTask;
-                          return next;
-                        });
-                      }}
-                    />
+                    task !== null && (
+                      <SwapSlot
+                        key={idx}
+                        idx={idx}
+                        task={task}
+                        allTasks={incompletCards}
+                        onSwap={(newTask) => {
+                          setSlots((prev) => {
+                            const next = [...prev];
+                            next[idx] = newTask;
+                            return next;
+                          });
+                        }}
+                      />
+                    )
                   ))}
                 </div>
               </div>

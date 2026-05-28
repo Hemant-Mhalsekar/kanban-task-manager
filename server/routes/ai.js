@@ -5,218 +5,275 @@ const Card = require('../models/Card');
 const { protect } = require('../middleware/authMiddleware');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const MODEL = 'llama-3.3-70b-versatile';
 
 // All routes require a valid JWT
 router.use(protect);
 
-// ─── POST /api/ai/priority ────────────────────────────────────────────────────
-// Fetches all cards for the logged-in user, sends them to Groq (Llama 3.3),
-// and returns an ordered priority suggestion list.
-router.post('/priority', async (req, res) => {
-  try {
-    // 1. Fetch all cards for the user
-    const cards = await Card.find({ user: req.user.id }).sort({ column: 1, order: 1 });
+// ── Shared helper: strip markdown fences & parse JSON with one retry ──────────
+async function parseAIJson(text, retryFn) {
+  const clean = (raw) =>
+    raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
 
-    if (!cards || cards.length === 0) {
+  try {
+    return JSON.parse(clean(text));
+  } catch {
+    // Retry once
+    console.log('[AI] First parse failed — retrying AI call once');
+    try {
+      const retryText = await retryFn();
+      return JSON.parse(clean(retryText));
+    } catch (e) {
+      throw new Error(`JSON parse failed after retry: ${e.message}`);
+    }
+  }
+}
+
+// ─── POST /api/ai/priority ────────────────────────────────────────────────────
+router.post('/priority', async (req, res) => {
+  const t0 = Date.now();
+  console.log(`[AI] priority → model: ${MODEL}`);
+  try {
+    // Fetch all cards (exclude done so we focus on actionable tasks)
+    const all = await Card.find({ user: req.user.id }).sort({ column: 1, order: 1 }).lean();
+
+    if (!all || all.length === 0) {
       return res.status(200).json({ suggestions: [], empty: true });
     }
 
-    // 2. Build the task list string for the prompt
+    // Limit to 10 tasks to avoid token limits — prioritise incomplete first
+    const incomplete = all.filter((c) => c.column !== 'done');
+    const done       = all.filter((c) => c.column === 'done');
+    const cards      = [...incomplete, ...done].slice(0, 10);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const taskList = cards
       .map((c) => {
-        const due = c.dueDate
-          ? new Date(c.dueDate).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'short',
-              day: 'numeric',
-            })
-          : 'No due date';
-        return `- ID: ${c._id} | Title: "${c.title}" | Priority: ${c.priority} | Status: ${c.column} | Due: ${due}`;
+        let dueInfo = 'No due date';
+        if (c.dueDate) {
+          const due = new Date(c.dueDate);
+          due.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((due - today) / 86400000);
+          if (diffDays < 0)       dueInfo = `OVERDUE by ${Math.abs(diffDays)} day(s)`;
+          else if (diffDays === 0) dueInfo = 'Due TODAY';
+          else if (diffDays === 1) dueInfo = 'Due TOMORROW';
+          else                     dueInfo = `Due in ${diffDays} days`;
+        }
+        const statusLabel = c.column === 'inprogress' ? 'In Progress' : c.column === 'done' ? 'Done' : 'To Do';
+        return `- ID: ${c._id} | Title: "${c.title}" | Priority: ${c.priority} | Status: ${statusLabel} | Deadline: ${dueInfo}`;
       })
       .join('\n');
 
-    // 3. Build the prompt
-    const prompt = `You are a productivity assistant. Analyze these tasks and suggest the optimal order to complete them.
+    const todayStr = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-For each task mention:
-- If deadline is today → say "Due TODAY - urgent!"
-- If deadline is tomorrow → say "Due TOMORROW - act soon"
-- If deadline is within 3 days → say "Due in X days - approaching"
-- If deadline is overdue → say "OVERDUE by X days - critical!"
-- If no deadline → base order on priority level
+    const prompt = `You are a productivity assistant. Today is ${todayStr}.
+
+Analyze these tasks and rank them from MOST to LEAST urgent to complete. Apply these rules:
+1. OVERDUE tasks always rank first — they are critical.
+2. Tasks due today or tomorrow rank above everything else except overdue.
+3. "In Progress" tasks rank higher than "To Do" tasks at the same priority level.
+4. High priority + no deadline ranks above low/medium priority + far deadline.
+5. "Done" tasks rank last.
 
 Tasks:
 ${taskList}
 
-Return ONLY a JSON array in this format, no extra text:
+Return ONLY a JSON array — no markdown, no extra text:
 [
   {
     "_id": "task id",
     "title": "task title",
-    "reason": "one short sentence with deadline urgency info"
+    "reason": "one sentence: state deadline urgency + why it's ranked here"
   }
-]
-Order from most critical to least critical.`;
+]`;
 
-    // 4. Call Groq API
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-    });
+    const makeCall = async () => {
+      const c = await groq.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: MODEL,
+        temperature: 0.3,
+      });
+      return (c.choices[0]?.message?.content ?? '').trim();
+    };
 
-    const text = (completion.choices[0]?.message?.content ?? '').trim();
-
-    // 5. Strip markdown code fences if present (```json ... ```)
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
-    // 6. Parse JSON
+    const text = await makeCall();
     let suggestions;
     try {
-      suggestions = JSON.parse(cleaned);
-    } catch {
-      console.error('[AI] Failed to parse Groq response:', text);
-      return res.status(500).json({
-        message: 'AI returned an unexpected response format. Please try again.',
-      });
+      suggestions = await parseAIJson(text, makeCall);
+    } catch (parseErr) {
+      console.error('[AI] priority parse error:', parseErr.message);
+      return res.status(500).json({ message: 'AI returned an unexpected format. Please try again.' });
     }
 
-    // 7. Enrich with priority from DB (so client doesn't need a second fetch)
-    const cardMap = new Map(cards.map((c) => [String(c._id), c]));
+    // Enrich with priority from DB
+    const cardMap = new Map(all.map((c) => [String(c._id), c]));
     const enriched = suggestions.map((s) => ({
       ...s,
       priority: cardMap.get(String(s._id))?.priority ?? 'medium',
     }));
 
+    console.log(`[AI] priority done in ${Date.now() - t0}ms — ${enriched.length} suggestions`);
     return res.json({ suggestions: enriched });
   } catch (err) {
     console.error('[AI] Priority route error:', err.message);
-    return res.status(500).json({
-      message: 'AI suggestions unavailable. Please try again later.',
-    });
+    return res.status(500).json({ message: 'AI suggestions unavailable. Please try again later.' });
   }
 });
 
 // ─── POST /api/ai/subtasks ────────────────────────────────────────────────────
-// Given a card's title and description, returns an array of suggested subtasks.
 router.post('/subtasks', async (req, res) => {
+  const t0 = Date.now();
+  console.log(`[AI] subtasks → model: ${MODEL}`);
   try {
     const { title, description } = req.body;
+    const trimmedTitle = String(title ?? '').trim();
 
-    if (!title || !String(title).trim()) {
-      return res.status(400).json({ message: 'Task title is required' });
+    // Input validation
+    if (!trimmedTitle || trimmedTitle.length < 3) {
+      return res.status(400).json({ message: 'Task title must be at least 3 characters.' });
     }
 
-    const prompt = `You are a productivity assistant. Based on this task:
-Title: ${String(title).trim()}
-Description: ${String(description || '').trim() || 'No description provided'}
+    const prompt = `You are a productivity assistant. Break down this task into exactly 5 actionable subtasks.
 
-Suggest 4-6 practical, specific, and actionable subtasks to complete this task.
-Return ONLY a JSON array in this format, no extra text:
+Task title: ${trimmedTitle}
+Task description: ${String(description || '').trim() || 'No description provided'}
+
+Rules for subtasks:
+1. Return EXACTLY 5 subtasks — not 4, not 6.
+2. Each subtask must be specific and actionable — avoid vague items like "research the topic" or "think about it".
+3. Order the subtasks logically — what should be done first, second, etc.
+4. Each subtask should be a concrete action starting with a verb (e.g. "Write", "Create", "Review", "Set up").
+
+Return ONLY a JSON array — no markdown, no extra text:
 [
-  { "title": "subtask title" },
-  { "title": "subtask title" }
+  { "title": "First specific subtask" },
+  { "title": "Second specific subtask" },
+  { "title": "Third specific subtask" },
+  { "title": "Fourth specific subtask" },
+  { "title": "Fifth specific subtask" }
 ]`;
 
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-    });
+    const makeCall = async () => {
+      const c = await groq.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: MODEL,
+        temperature: 0.5,
+      });
+      return (c.choices[0]?.message?.content ?? '').trim();
+    };
 
-    const text = (completion.choices[0]?.message?.content ?? '').trim();
-
-    // Strip markdown code fences if present
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
+    const text = await makeCall();
     let suggestions;
     try {
-      suggestions = JSON.parse(cleaned);
-    } catch {
-      console.error('[AI] Failed to parse Groq subtask response:', text);
-      return res.status(500).json({
-        message: 'AI returned an unexpected response format. Please try again.',
-      });
+      suggestions = await parseAIJson(text, makeCall);
+    } catch (parseErr) {
+      console.error('[AI] subtasks parse error:', parseErr.message);
+      return res.status(500).json({ message: 'AI returned an unexpected format. Please try again.' });
     }
 
+    console.log(`[AI] subtasks done in ${Date.now() - t0}ms — ${suggestions.length} subtasks`);
     return res.json({ suggestions });
   } catch (err) {
     console.error('[AI] Subtask route error:', err.message);
-    return res.status(500).json({
-      message: 'AI suggestions unavailable. Please try again later.',
-    });
+    return res.status(500).json({ message: 'AI suggestions unavailable. Please try again later.' });
   }
 });
 
 // ─── POST /api/ai/focus ──────────────────────────────────────────────────────
-// Picks the top-3 most important incomplete tasks for today's focus session.
 router.post('/focus', async (req, res) => {
+  const t0 = Date.now();
+  console.log(`[AI] focus → model: ${MODEL}`);
   try {
-    // 1. Fetch only incomplete cards (not in "done")
+    // Fetch all incomplete cards
     const cards = await Card.find({
       user: req.user.id,
       column: { $ne: 'done' },
-    }).sort({ column: 1, order: 1 });
+    }).sort({ column: 1, order: 1 }).lean();
 
-    if (!cards || cards.length < 3) {
-      return res.status(200).json({ tooFew: true, count: cards?.length ?? 0 });
+    const count = cards?.length ?? 0;
+
+    // If fewer than 3 incomplete tasks, return all of them directly (no AI needed)
+    if (count === 0) {
+      return res.status(200).json({ tooFew: true, count: 0 });
+    }
+    if (count < 3) {
+      const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+      const enriched = cards.map((c) => ({
+        _id:      c._id,
+        title:    c.title,
+        priority: c.priority,
+        dueDate:  c.dueDate ?? null,
+        reason:   'Selected because you have fewer than 3 incomplete tasks.',
+      }));
+      console.log(`[AI] focus skipped (only ${count} tasks) in ${Date.now() - t0}ms`);
+      return res.json({ focus: enriched, fewTasks: true });
     }
 
-    // 2. Today's date string for the prompt
-    const todayStr = new Date().toLocaleDateString('en-US', {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayStr = today.toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     });
 
-    // 3. Build task list string
     const taskList = cards
       .map((c) => {
-        const due = c.dueDate
-          ? new Date(c.dueDate).toLocaleDateString('en-US', {
-              year: 'numeric', month: 'short', day: 'numeric',
-            })
-          : 'No due date';
-        return `- ID: ${c._id} | Title: "${c.title}" | Priority: ${c.priority} | Status: ${c.column} | Due: ${due}`;
+        let dueInfo = 'No due date';
+        if (c.dueDate) {
+          const due = new Date(c.dueDate);
+          due.setHours(0, 0, 0, 0);
+          const diffDays = Math.round((due - today) / 86400000);
+          if (diffDays < 0)       dueInfo = `OVERDUE by ${Math.abs(diffDays)} day(s) — critical!`;
+          else if (diffDays === 0) dueInfo = 'Due TODAY — urgent!';
+          else if (diffDays === 1) dueInfo = 'Due TOMORROW — act soon';
+          else                     dueInfo = `Due in ${diffDays} days`;
+        }
+        const statusLabel = c.column === 'inprogress' ? 'In Progress' : 'To Do';
+        return `- ID: ${c._id} | Title: "${c.title}" | Priority: ${c.priority} | Status: ${statusLabel} | Deadline: ${dueInfo}`;
       })
       .join('\n');
 
-    // 4. Build prompt
-    const prompt = `You are a productivity assistant. The user has these pending tasks today. Pick the TOP 3 most important tasks to focus on today based on deadlines, priority, and status.
+    const prompt = `You are a productivity assistant. Today is ${todayStr}.
 
-Today's date: ${todayStr}
+Select the TOP 3 most important tasks the user should focus on TODAY. Apply these priority rules strictly:
+1. OVERDUE tasks first — always. They are past their deadline.
+2. Tasks due today or tomorrow come next.
+3. High-priority tasks that are "In Progress" rank above tasks still in "To Do".
+4. Never include tasks from the "done" column (they are already excluded).
+5. If all tasks have no deadline, prefer high priority → in-progress → medium → low.
 
-Tasks:
+Tasks (all are incomplete):
 ${taskList}
 
-Return ONLY a JSON array of exactly 3 tasks, no extra text:
+Return ONLY a JSON array of exactly 3 items — no markdown, no extra text:
 [
   {
     "_id": "task id",
     "title": "task title",
-    "reason": "one short sentence why focus on this today"
+    "reason": "one sentence: why this should be focused on today"
   }
 ]`;
 
-    // 5. Call Groq API
-    const completion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-    });
+    const makeCall = async () => {
+      const c = await groq.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: MODEL,
+        temperature: 0.3,
+      });
+      return (c.choices[0]?.message?.content ?? '').trim();
+    };
 
-    const text = (completion.choices[0]?.message?.content ?? '').trim();
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
+    const text = await makeCall();
     let focus;
     try {
-      focus = JSON.parse(cleaned);
-    } catch {
-      console.error('[AI] Failed to parse Groq focus response:', text);
-      return res.status(500).json({
-        message: 'AI returned an unexpected response format. Please try again.',
-      });
+      focus = await parseAIJson(text, makeCall);
+    } catch (parseErr) {
+      console.error('[AI] focus parse error:', parseErr.message);
+      return res.status(500).json({ message: 'AI returned an unexpected format. Please try again.' });
     }
 
-    // 6. Enrich with priority + dueDate from DB
+    // Enrich with priority + dueDate from DB
     const cardMap = new Map(cards.map((c) => [String(c._id), c]));
     const enriched = focus.map((f) => ({
       ...f,
@@ -224,12 +281,11 @@ Return ONLY a JSON array of exactly 3 tasks, no extra text:
       dueDate:  cardMap.get(String(f._id))?.dueDate  ?? null,
     }));
 
+    console.log(`[AI] focus done in ${Date.now() - t0}ms — ${enriched.length} tasks selected`);
     return res.json({ focus: enriched });
   } catch (err) {
     console.error('[AI] Focus route error:', err.message);
-    return res.status(500).json({
-      message: 'AI focus unavailable. Please try again later.',
-    });
+    return res.status(500).json({ message: 'AI focus unavailable. Please try again later.' });
   }
 });
 
